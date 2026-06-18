@@ -1,0 +1,42 @@
+{
+  "render_all_samples": true,
+  "manual_obj_root": "C:\\Users\\CGnA\\Desktop\\CLO\\example\\03_manual_obj_exports",
+  "render_root": "C:\\Users\\CGnA\\Desktop\\CLO\\example\\04_blender_multiview",
+  "num_targets": 3,
+  "samples": [
+    {
+      "sample_index": 0,
+      "sample_name": "000_base_000",
+      "obj_path": "C:\\Users\\CGnA\\Desktop\\CLO\\example\\03_manual_obj_exports\\000_base_000\\obj.obj",
+      "output_dir": "C:\\Users\\CGnA\\Desktop\\CLO\\example\\04_blender_multiview\\000_base_000",
+      "status": "success",
+      "summary_json": "C:\\Users\\CGnA\\Desktop\\CLO\\example\\04_blender_multiview\\000_base_000\\dataset_summary.json",
+      "images_dir": "C:\\Users\\CGnA\\Desktop\\CLO\\example\\04_blender_multiview\\000_base_000\\images",
+      "geometry_ply": "C:\\Users\\CGnA\\Desktop\\CLO\\example\\04_blender_multiview\\000_base_000\\sparse\\0\\points3D.ply"
+    },
+    {
+      "sample_index": 1,
+      "sample_name": "001_base_001",
+      "obj_path": "C:\\Users\\CGnA\\Desktop\\CLO\\example\\03_manual_obj_exports\\001_base_001\\obj.obj",
+      "output_dir": "C:\\Users\\CGnA\\Desktop\\CLO\\example\\04_blender_multiview\\001_base_001",
+      "status": "success",
+      "summary_json": "C:\\Users\\CGnA\\Desktop\\CLO\\example\\04_blender_multiview\\001_base_001\\dataset_summary.json",
+      "images_dir": "C:\\Users\\CGnA\\Desktop\\CLO\\example\\04_blender_multiview\\001_base_001\\images",
+      "geometry_ply": "C:\\Users\\CGnA\\Desktop\\CLO\\example\\04_blender_multiview\\001_base_001\\sparse\\0\\points3D.ply"
+    },
+    {
+      "sample_index": 2,
+      "sample_name": "002_base_002",
+      "obj_path": "C:\\Users\\CGnA\\Desktop\\CLO\\example\\03_manual_obj_exports\\002_base_002\\obj.obj",
+      "output_dir": "C:\\Users\\CGnA\\Desktop\\CLO\\example\\04_blender_multiview\\002_base_002",
+      "status": "success",
+      "summary_json": "C:\\Users\\CGnA\\Desktop\\CLO\\example\\04_blender_multiview\\002_base_002\\dataset_summary.json",
+      "images_dir": "C:\\Users\\CGnA\\Desktop\\CLO\\example\\04_blender_multiview\\002_base_002\\images",
+      "geometry_ply": "C:\\Users\\CGnA\\Desktop\\CLO\\example\\04_blender_multiview\\002_base_002\\sparse\\0\\points3D.ply"
+    }
+  ],
+  "output_files": {
+    "render_root": "C:\\Users\\CGnA\\Desktop\\CLO\\example\\04_blender_multiview",
+    "pipeline_summary_json": "C:\\Users\\CGnA\\Desktop\\CLO\\example\\04_blender_multiview\\pipeline_summary.json"
+  }
+}

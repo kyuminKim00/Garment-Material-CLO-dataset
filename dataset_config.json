@@ -1,0 +1,68 @@
+{
+  "project": {
+    "name": "CLO garment dataset",
+    "output_dir": "C:/Users/CGnA/Desktop/CLO/example"
+  },
+  "inputs": {
+    "base_fabric_zfab": "C:/Users/CGnA/Desktop/CLO/example/base.zfab",
+    "base_garment_zprj": "C:/Users/CGnA/Desktop/CLO/example/base_A_pose_dress.zprj"
+  },
+  "naming": {
+    "fabric_dir": "01_fabric_bending",
+    "draped_dir": "02_draped_garments",
+    "manual_obj_dir": "03_manual_obj_exports",
+    "render_dir": "04_blender_multiview",
+    "gs_dir": "05_3dgs",
+    "fabric_file_template": "base_{index:03d}.zfab",
+    "material_json_template": "base_{index:03d}.material.json",
+    "sample_dir_template": "{index:03d}_{fabric_stem}",
+    "draped_zprj_file": "draped_garment.zprj",
+    "sample_summary_file": "summary.json",
+    "manual_obj_file": "obj.obj",
+    "manual_mtl_file": "obj.mtl",
+    "manual_diffuse_file": "obj_diffuse.png",
+    "manual_normal_file": "obj_normal.png"
+  },
+  "fabric_sampler": {
+    "sample_count": 3,
+    "sample_mode": "paired",
+    "load_samples_into_clo": false,
+    "export_through_clo_after_load": false,
+    "warp_fields": [
+      "fBuK",
+      "fBuK_v2"
+    ],
+    "weft_fields": [
+      "fBvK",
+      "fBvK_v2"
+    ],
+    "patch_buckling_stiffness": false
+  },
+  "clo_simulation": {
+    "sim_steps": 300,
+    "max_samples": 0,
+    "stop_on_first_failure": true,
+    "save_sim_zprj": true,
+    "skip_render": true,
+    "export_obj": false
+  },
+  "blender_render": {
+    "render_all_samples": true,
+    "sample_index": 0,
+    "hdri_path": "",
+    "num_views": 6,
+    "resolution": 512,
+    "camera_radius": 0.0,
+    "radius_scale": 3.0,
+    "lens_mm": 50.0,
+    "sensor_width_mm": 36.0,
+    "samples": 64,
+    "normal_strength": 1.0,
+    "world_strength": 0.2,
+    "light_scale": 0.12,
+    "exposure": -0.2
+  },
+  "3dgs_training": {
+    "enabled": false
+  }
+}
