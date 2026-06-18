@@ -5,7 +5,7 @@
 
 Config:
 
-`PATH/scripts/dataset_pipeline_config.json`
+`PATH/dataset_pipeline_config.json`
 
 Config에서 직접 바꾸는 핵심 값은 세 개다.
 
@@ -86,11 +86,6 @@ Output:
 - `output_dir/01_fabric_bending/*.material.json`
 - `output_dir/01_fabric_bending/summary_bending_sampling.json`
 
-Run:
-
-```powershell
-python C:/Users/CGnA/Desktop/CLO/scripts/clo_fab_sampler.py
-```
 
 ## 2. CLO Simulation 후 Draped ZPRJ 저장
 
