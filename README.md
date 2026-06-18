@@ -3,6 +3,8 @@
 
 기본적으로 3번 단계 빼고는 각 단계의 코드를 순서대로 실행하면 코드 이해 없이 코드 복사/붙여넣기로 실행 가능하다.
 
+Dataset 생성 instruction은 instruction.md 에 명시
+
 Config:
 
 `PATH/dataset_pipeline_config.json`

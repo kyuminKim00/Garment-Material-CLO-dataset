@@ -22,11 +22,11 @@
 
 | 항목 | 값 | 설명 |
 |---|---:|---|
-| 의류 카테고리 수 | 5개 | 티셔츠, 셔츠/블라우스, 바지, 스커트, 드레스 |
+| 의류 카테고리 수 | 5개 | 티셔츠, 셔츠(블라우스), 긴바지, 스커트, 드레스 |
 | 카테고리당 garment 수 | 10개 이상 | 서로 다른 패턴/디자인의 CLO garment |
 | 전체 garment 수 | 50개 이상 | `5 categories × 10 garments` |
 | Avatar | 2개 | CLO 기본 Male / Female 마네킹 |
-| Pose | 1개 | 기본 pose 고정. pose variation 없음 |
+| Pose | 1개 | 기본 A pose 고정. pose variation 없음 |
 | Bending 샘플 수 | 10개 | UI 기준 0~100 uniform sampling |
 | Garment당 drape 수 | 20개 | `2 avatars × 10 bending` |
 | 전체 draped sample 수 | 1,000개 | `5 × 10 × 2 × 10` |
@@ -39,9 +39,8 @@
 |---|---:|
 | 전체 garment 수 | 50개 이상 |
 | 전체 draped sample 수 | 1,000개 목표 |
-| 실패 허용 | 전체 샘플의 5% 이하 |
-| 최종 유효 sample 수 | 950개 이상 |
-| 최종 유효 image 수 | 45,600장 이상 |
+| 최종 유효 sample 수 | 1,000개 이상 |
+| 최종 유효 image 수 | 46,000장 이상 |
 
 실패 샘플은 삭제하지 말고 `failure_report.csv`에 원인을 기록한다.
 
@@ -62,7 +61,7 @@
 - 각 category 내부에서 **패턴 구조가 너무 비슷한 garment만 반복하지 않는다.**
 - 동일한 garment에서 색/텍스처만 바꾼 것은 서로 다른 garment로 계산하지 않는다.
 - 목표는 texture variation이 아니라 **drape shape variation**이다.
-- 너무 두꺼운 jacket/coat 계열은 이번 v1에서는 제외한다.
+- bending 외의 파라미터는 고정한다.
 
 ---
 
@@ -79,8 +78,7 @@
 ### 처리 규칙
 
 - 하나의 garment는 가능한 경우 **Male/Female 두 마네킹 모두에 drape**한다.
-- 특정 garment가 한쪽 avatar에서 심하게 깨지거나 착장 자체가 불가능하면 해당 샘플은 실패 처리하고 기록한다.
-- 실패하더라도 다른 avatar 결과는 유지한다.
+- 특정 garment가 한쪽 avatar에서 심하게 깨지거나 착장 자체가 불가능하면 해당 샘플은 실패 처리한다.
 
 ---
 
@@ -98,7 +96,7 @@
 | Thickness | 고정 | base fabric 값 유지 |
 | Texture / Color | 고정 | 같은 garment 내에서 고정 |
 
-이번 v1에서는 **Bending-Warp와 Bending-Weft만 paired 방식으로 동시에 변경**한다.
+본 데이터셋에서는 **Bending-Warp와 Bending-Weft만 paired 방식으로 동시에 변경**한다.
 즉, 한 샘플에서 `Bending-Warp UI = Bending-Weft UI`로 둔다.
 
 ### 4.2 UI 값
@@ -161,7 +159,7 @@
 
 ### 렌더링 품질 조건
 
-- 모든 view에서 옷이 화면 밖으로 잘리지 않아야 한다.
+- **모든 view에서 옷이 화면 밖으로 잘리지 않아야 한다.**
 - 옷 전체가 보이도록 camera radius를 조정한다.
 - sample 간 카메라 위치, 조명, 해상도는 동일하게 유지한다.
 - bending 값만 바뀌어야 하므로 texture, lighting, camera 변화는 최소화한다.
@@ -260,7 +258,7 @@ DyeTech_CLO_Garment_Dataset/
 
 | Config key | 현재/권장 값 | 설명 |
 |---|---:|---|
-| `fabric_sampler.sample_count` | `10` | 현재 예시 config가 3이면 10으로 변경 |
+| `fabric_sampler.sample_count` | `10` | bending 파라미터를 몇 단계로 변경하는지 |
 | `fabric_sampler.sample_mode` | `paired` | Warp/Weft bending을 같은 UI 값으로 변경 |
 | `clo_simulation.sim_steps` | `300` | 기본 유지 |
 | `clo_simulation.save_sim_zprj` | `true` | draped `.zprj` 저장 |
@@ -355,16 +353,6 @@ CLO에서 `draped_garment.zprj`를 열고 OBJ를 수동 export한다.
 | 동일 garment 내 texture | bending만 바뀌고 texture/camera/lighting은 동일해야 함 |
 | simulation failure | 값이 바뀌어도 형상이 완전히 동일하면 실패 의심 |
 
-권장 검수 산출물:
-
-```text
-preview_contact_sheet/
-  tshirt_000_male_bending_grid.png
-  tshirt_000_female_bending_grid.png
-  ...
-```
-
-각 contact sheet는 같은 camera view에서 bending 10단계를 한 줄로 보여준다.
 
 ---
 
@@ -409,7 +397,7 @@ preview_contact_sheet/
 | `02_draped_garments/` | 필수 | draped `.zprj` |
 | `03_manual_obj_exports/` | 필수 | OBJ/MTL/texture |
 | `04_blender_multiview/` | 필수 | 48-view image, camera files |
-| `05_3dgs/` | 선택 | 현재는 비워둠 |
+| `05_3dgs/` | 선택 | 현재는 비워둠(연세대에서 학습) |
 | `preview_contact_sheet/` | 권장 | 빠른 시각 검수용 |
 
 ---
@@ -441,12 +429,10 @@ Pilot set이 통과한 뒤 전체 1,000 sample 제작을 진행한다.
 
 ## 14. 하지 말아야 할 것
 
-- 3DGS 학습을 수행하지 않는다.
 - Pose variation을 넣지 않는다.
-- bending 외 다른 물성을 임의로 바꾸지 않는다.
-- 같은 garment에서 texture/color를 임의로 바꾸지 않는다.
+- bending 외 다른 물성을 바꾸지 않는다.
+- 같은 garment에서 texture/color를 바꾸지 않는다.
 - 카메라 개수, 해상도, 렌즈 값을 샘플마다 다르게 바꾸지 않는다.
-- 실패 샘플을 조용히 삭제하지 않는다. 반드시 `failure_report.csv`에 기록한다.
 
 ---
 
@@ -463,5 +449,5 @@ Pilot set이 통과한 뒤 전체 1,000 sample 제작을 진행한다.
 | Drape 결과 | 총 1,000개 목표 |
 | Render | sample당 48-view, 512×512 |
 | 전체 이미지 | 48,000장 목표 |
-| 3DGS | 이번 납품에서는 학습하지 않음 |
+| 3DGS | 연세대에서 학습 |
 | 최종 산출물 | multi-view images, camera parameters, COLMAP files, OBJ, ZPRJ, material JSON |
