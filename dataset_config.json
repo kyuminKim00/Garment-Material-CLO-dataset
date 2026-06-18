@@ -24,7 +24,7 @@
     "manual_normal_file": "obj_normal.png"
   },
   "fabric_sampler": {
-    "sample_count": 3,
+    "sample_count": 10,
     "sample_mode": "paired",
     "load_samples_into_clo": false,
     "export_through_clo_after_load": false,
