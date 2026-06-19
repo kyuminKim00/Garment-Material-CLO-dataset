@@ -1,5 +1,55 @@
 {
   "V2_Cut_Sew_Knit_Fleece_3.fab": {
+    "fBLeftShearK": [
+      {
+        "value_offset": 35142,
+        "value_float_le": 3279.649658203125,
+        "raw_hex": "65fa4c45"
+      },
+      {
+        "value_offset": 35740,
+        "value_float_le": 3279.649658203125,
+        "raw_hex": "65fa4c45"
+      }
+    ],
+    "fBLeftShearK_v2": [
+      {
+        "value_offset": 35336,
+        "value_float_le": 10303.3232421875,
+        "raw_hex": "4bfd2046"
+      },
+      {
+        "value_offset": 35956,
+        "value_float_le": 10303.3232421875,
+        "raw_hex": "4bfd2046"
+      }
+    ],
+    "fBRightShearK": [],
+    "fBRightShearK_v2": [
+      {
+        "value_offset": 35317,
+        "value_float_le": 10303.3232421875,
+        "raw_hex": "4bfd2046"
+      },
+      {
+        "value_offset": 35909,
+        "value_float_le": 10303.3232421875,
+        "raw_hex": "4bfd2046"
+      }
+    ],
+    "fBhK": [
+      {
+        "value_offset": 35275,
+        "value_float_le": 3279.649658203125,
+        "raw_hex": "65fa4c45"
+      },
+      {
+        "value_offset": 35878,
+        "value_float_le": 3279.649658203125,
+        "raw_hex": "65fa4c45"
+      }
+    ],
+    "fBhK_v2": [],
     "fBuK": [
       {
         "value_offset": 35259,

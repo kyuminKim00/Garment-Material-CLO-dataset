@@ -41,7 +41,7 @@ UI_SAMPLE_BINS = [
     {"min": 50.0, "max": 70.0, "count": 2},
     {"min": 70.0, "max": 100.0, "count": 3},
 ]
-PRESERVE_BENDING_V2_RATIO = True
+PRESERVE_BENDING_V2_RATIO = False
 
 # CLO API 사용 여부: CLO Python Editor 안에서 실행하면 True 권장
 LOAD_SAMPLES_INTO_CLO = True
@@ -54,8 +54,22 @@ EXPORT_THROUGH_CLO_AFTER_LOAD = False
 WARP_FIELDS = ["fBuK", "fBuK_v2"]  # Bending-Warp 후보
 WEFT_FIELDS = ["fBvK", "fBvK_v2"]  # Bending-Weft 후보
 
-# 추가로 같이 패치하고 싶으면 True.
-# 보통 Bending-Warp/Weft만 원하면 False 유지.
+# 하나의 bending stiffness level로 볼 때 Bias도 Warp/Weft와 같이 패치한다.
+# CLO UI의 Bias 값은 shear-direction bending field도 함께 보는 케이스가 있다.
+BIAS_FIELDS = [
+    "fBhK",
+    "fBhK_v2",
+    "fBLeftShearK",
+    "fBLeftShearK_v2",
+    "fBRightShearK",
+    "fBRightShearK_v2",
+]
+PATCH_BENDING_BIAS = True
+V2_PRIMARY_FIELD_ALIASES = {
+    "fBRightShearK_v2": "fBhK",
+}
+
+# Buckling stiffness는 bending stiffness와 다른 항목이라 기본적으로 유지한다.
 PATCH_BUCKLING_STIFFNESS = False
 BUCKLING_WARP_FIELDS = ["fBucklingStiffnessU"]
 BUCKLING_WEFT_FIELDS = ["fBucklingStiffnessV"]
@@ -307,8 +321,10 @@ def find_exact_key_offsets(data: bytes, key: str) -> List[int]:
         start = idx + 1
         if val_off + 4 > len(data):
             continue
-        # fBuK_v2 같은 longer key prefix 매칭 방지
-        if val_off < len(data) and _is_identifier_byte(data[val_off]):
+        # Avoid matching fBuK inside fBuK_v2. The first byte of the float
+        # payload can also be an ASCII identifier byte, so only skip the
+        # known longer-key suffix form.
+        if data[val_off:val_off + 3] == b"_v2":
             continue
         offsets.append(val_off)
     return offsets
@@ -357,28 +373,48 @@ def _safe_ratio(numerator: Any, denominator: Any, default: float = 1.0) -> float
         return default
 
 
+def _primary_field_for_v2(field: str) -> str:
+    if field in V2_PRIMARY_FIELD_ALIASES:
+        return V2_PRIMARY_FIELD_ALIASES[field]
+    if field.endswith("_v2"):
+        return field[:-3]
+    return field
+
+
+def _field_ratio_for_v2(data: bytes, field: str, default: float = 1.0) -> float:
+    if not field.endswith("_v2"):
+        return default
+    primary_field = _primary_field_for_v2(field)
+    return _safe_ratio(_first_field_value(data, field), _first_field_value(data, primary_field), default)
+
+
+def _scaled_field_value(data: bytes, field: str, actual_value: float, preserve_v2_ratio: bool) -> float:
+    value = float(actual_value)
+    if preserve_v2_ratio and field.endswith("_v2"):
+        value *= _field_ratio_for_v2(data, field)
+    return value
+
+
 def patch_fab_bytes(
     data: bytes,
     warp_actual: float,
     weft_actual: float,
-    preserve_bending_v2_ratio: bool = True,
+    bias_actual: float = None,
+    preserve_bending_v2_ratio: bool = False,
 ) -> Tuple[bytes, Dict[str, Any]]:
     buf = bytearray(data)
 
-    warp_v2_ratio = _safe_ratio(_first_field_value(data, "fBuK_v2"), _first_field_value(data, "fBuK"))
-    weft_v2_ratio = _safe_ratio(_first_field_value(data, "fBvK_v2"), _first_field_value(data, "fBvK"))
+    if bias_actual is None:
+        bias_actual = (float(warp_actual) + float(weft_actual)) * 0.5
 
     patch_targets: List[Tuple[str, str, float]] = []
     for f in WARP_FIELDS:
-        value = warp_actual
-        if preserve_bending_v2_ratio and f.endswith("_v2"):
-            value *= warp_v2_ratio
-        patch_targets.append(("warp", f, value))
+        patch_targets.append(("warp", f, _scaled_field_value(data, f, warp_actual, preserve_bending_v2_ratio)))
     for f in WEFT_FIELDS:
-        value = weft_actual
-        if preserve_bending_v2_ratio and f.endswith("_v2"):
-            value *= weft_v2_ratio
-        patch_targets.append(("weft", f, value))
+        patch_targets.append(("weft", f, _scaled_field_value(data, f, weft_actual, preserve_bending_v2_ratio)))
+    if PATCH_BENDING_BIAS:
+        for f in BIAS_FIELDS:
+            patch_targets.append(("bias", f, _scaled_field_value(data, f, bias_actual, preserve_bending_v2_ratio)))
 
     if PATCH_BUCKLING_STIFFNESS:
         for f in BUCKLING_WARP_FIELDS:
@@ -410,8 +446,9 @@ def patch_fab_bytes(
         "patched_count": patched_count,
         "preserve_bending_v2_ratio": preserve_bending_v2_ratio,
         "bending_v2_ratios": {
-            "warp": warp_v2_ratio,
-            "weft": weft_v2_ratio,
+            "warp": {f: _field_ratio_for_v2(data, f) for f in WARP_FIELDS if f.endswith("_v2")},
+            "weft": {f: _field_ratio_for_v2(data, f) for f in WEFT_FIELDS if f.endswith("_v2")},
+            "bias": {f: _field_ratio_for_v2(data, f) for f in BIAS_FIELDS if f.endswith("_v2")},
         },
         "patch_log": patch_log,
     }
@@ -434,7 +471,8 @@ def patch_zfab(
     output_zfab: str,
     warp_actual: float,
     weft_actual: float,
-    preserve_bending_v2_ratio: bool = True,
+    bias_actual: float = None,
+    preserve_bending_v2_ratio: bool = False,
 ) -> Dict[str, Any]:
     if not zipfile.is_zipfile(input_zfab):
         raise RuntimeError(f"Input is not a valid .zfab zip: {input_zfab}")
@@ -452,9 +490,10 @@ def patch_zfab(
 
             if info.filename.lower().endswith(".fab"):
                 fab_files.append(info.filename)
-                before_scan = scan_fields_in_fab(data, sorted(set(WARP_FIELDS + WEFT_FIELDS + BUCKLING_WARP_FIELDS + BUCKLING_WEFT_FIELDS)))
-                out_data, patch_info = patch_fab_bytes(data, warp_actual, weft_actual, preserve_bending_v2_ratio)
-                after_scan = scan_fields_in_fab(out_data, sorted(set(WARP_FIELDS + WEFT_FIELDS + BUCKLING_WARP_FIELDS + BUCKLING_WEFT_FIELDS)))
+                scan_fields = sorted(set(WARP_FIELDS + WEFT_FIELDS + BIAS_FIELDS + BUCKLING_WARP_FIELDS + BUCKLING_WEFT_FIELDS))
+                before_scan = scan_fields_in_fab(data, scan_fields)
+                out_data, patch_info = patch_fab_bytes(data, warp_actual, weft_actual, bias_actual, preserve_bending_v2_ratio)
+                after_scan = scan_fields_in_fab(out_data, scan_fields)
                 total_patched += patch_info["patched_count"]
                 all_logs.append({
                     "fab_file": info.filename,
@@ -476,6 +515,8 @@ def patch_zfab(
                 "fab_files": fab_files,
                 "warp_fields": WARP_FIELDS,
                 "weft_fields": WEFT_FIELDS,
+                "bias_fields": BIAS_FIELDS,
+                "patch_bending_bias": PATCH_BENDING_BIAS,
                 "logs": all_logs,
             }, f, indent=2, ensure_ascii=False)
         raise RuntimeError(f"No Bending-Warp/Weft value was patched. Check: {debug_path}")
@@ -749,7 +790,7 @@ def parse_args(argv: List[str]) -> argparse.Namespace:
 
 
 def main(argv: List[str] = None):
-    global WARP_FIELDS, WEFT_FIELDS, PATCH_BUCKLING_STIFFNESS
+    global WARP_FIELDS, WEFT_FIELDS, BIAS_FIELDS, PATCH_BENDING_BIAS, PATCH_BUCKLING_STIFFNESS
     global BUCKLING_WARP_FIELDS, BUCKLING_WEFT_FIELDS
 
     args = parse_args(sys.argv[1:] if argv is None else argv)
@@ -912,6 +953,20 @@ def main(argv: List[str] = None):
             deep_get(config, ["fabric_sampler", "weft_fields"], deep_get(config, ["sampler", "weft_fields"], WEFT_FIELDS)),
         )
     )
+    BIAS_FIELDS = list(
+        deep_get(
+            config,
+            ["stage_1_fabric_sampler", "settings", "bias_fields"],
+            deep_get(config, ["fabric_sampler", "bias_fields"], deep_get(config, ["sampler", "bias_fields"], BIAS_FIELDS)),
+        )
+    )
+    PATCH_BENDING_BIAS = bool(
+        deep_get(
+            config,
+            ["stage_1_fabric_sampler", "settings", "patch_bending_bias"],
+            deep_get(config, ["fabric_sampler", "patch_bending_bias"], deep_get(config, ["sampler", "patch_bending_bias"], PATCH_BENDING_BIAS)),
+        )
+    )
     PATCH_BUCKLING_STIFFNESS = bool(
         deep_get(
             config,
@@ -981,6 +1036,8 @@ def main(argv: List[str] = None):
         "rule_interpretation": "piecewise linear slope; UI=100 is clamped to actual=2000000",
         "warp_fields": WARP_FIELDS,
         "weft_fields": WEFT_FIELDS,
+        "bias_fields": BIAS_FIELDS,
+        "patch_bending_bias": PATCH_BENDING_BIAS,
         "patch_buckling_stiffness": PATCH_BUCKLING_STIFFNESS,
         "created_at": time.strftime("%Y-%m-%d %H:%M:%S"),
         "samples": [],
@@ -1008,8 +1065,10 @@ def main(argv: List[str] = None):
         print("INPUT_ZFAB:", input_zfab)
 
         for bend_idx, (ui_warp, ui_weft) in enumerate(pairs):
+            ui_bias = (float(ui_warp) + float(ui_weft)) * 0.5
             warp_actual = ui_to_actual(ui_warp)
             weft_actual = ui_to_actual(ui_weft)
+            bias_actual = ui_to_actual(ui_bias)
             bend_id = safe_id(
                 format_stage_file_name(
                     bend_dir_template,
@@ -1049,10 +1108,10 @@ def main(argv: List[str] = None):
 
             print("\n" + "-" * 80)
             print(f"[Sample {sample_index+1}/{summary['sample_count']}] {sample_id}")
-            print(f"warp_ui={ui_warp:.4f}, weft_ui={ui_weft:.4f}")
-            print(f"actual: warp={warp_actual}, weft={weft_actual}")
+            print(f"warp_ui={ui_warp:.4f}, weft_ui={ui_weft:.4f}, bias_ui={ui_bias:.4f}")
+            print(f"actual: warp={warp_actual}, weft={weft_actual}, bias={bias_actual}")
 
-            patch_result = patch_zfab(input_zfab, out_zfab, warp_actual, weft_actual, preserve_bending_v2_ratio)
+            patch_result = patch_zfab(input_zfab, out_zfab, warp_actual, weft_actual, bias_actual, preserve_bending_v2_ratio)
 
             clo_load_result = None
             clo_export_result = None
@@ -1076,10 +1135,12 @@ def main(argv: List[str] = None):
                 "ui": {
                     "bending_warp": ui_warp,
                     "bending_weft": ui_weft,
+                    "bending_bias": ui_bias,
                 },
                 "actual": {
                     "bending_warp": warp_actual,
                     "bending_weft": weft_actual,
+                    "bending_bias": bias_actual,
                 },
                 "rule_text": RULE_TEXT,
                 "rule_interpretation": summary["rule_interpretation"],
@@ -1087,6 +1148,8 @@ def main(argv: List[str] = None):
                 "internal_fields": {
                     "warp_fields": WARP_FIELDS,
                     "weft_fields": WEFT_FIELDS,
+                    "bias_fields": BIAS_FIELDS,
+                    "patch_bending_bias": PATCH_BENDING_BIAS,
                 },
                 "patch_result": patch_result,
                 "clo_api": {
@@ -1106,8 +1169,10 @@ def main(argv: List[str] = None):
                 "source_zfab": input_zfab,
                 "ui_warp": ui_warp,
                 "ui_weft": ui_weft,
+                "ui_bias": ui_bias,
                 "actual_warp": warp_actual,
                 "actual_weft": weft_actual,
+                "actual_bias": bias_actual,
                 "zfab": out_zfab,
                 "json": out_json,
                 "output_files": {
@@ -1138,7 +1203,7 @@ def main(argv: List[str] = None):
                 for info in z.infolist():
                     if info.filename.lower().endswith(".fab"):
                         data = z.read(info.filename)
-                        scans[info.filename] = scan_fields_in_fab(data, sorted(set(WARP_FIELDS + WEFT_FIELDS + BUCKLING_WARP_FIELDS + BUCKLING_WEFT_FIELDS)))
+                        scans[info.filename] = scan_fields_in_fab(data, sorted(set(WARP_FIELDS + WEFT_FIELDS + BIAS_FIELDS + BUCKLING_WARP_FIELDS + BUCKLING_WEFT_FIELDS)))
                 all_scans[fabric_id] = scans
                 write_json(os.path.join(debug_dir, f"{fabric_id}_zfab_field_scan.json"), scans)
         except Exception as e:

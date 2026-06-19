@@ -27,7 +27,7 @@
     "manual_normal_file": "obj_normal.png"
   },
   "fabric_sampler": {
-    "sample_count": 10,
+    "sample_count": 2,
     "sample_mode": "paired",
     "sample_distribution": "ui_bucket_jittered",
     "sample_seed": 0,
@@ -53,7 +53,7 @@
         "count": 3
       }
     ],
-    "preserve_bending_v2_ratio": true,
+    "preserve_bending_v2_ratio": false,
     "load_samples_into_clo": false,
     "export_through_clo_after_load": false,
     "warp_fields": [
@@ -63,6 +63,15 @@
     "weft_fields": [
       "fBvK",
       "fBvK_v2"
+    ],
+    "patch_bending_bias": true,
+    "bias_fields": [
+      "fBhK",
+      "fBhK_v2",
+      "fBLeftShearK",
+      "fBLeftShearK_v2",
+      "fBRightShearK",
+      "fBRightShearK_v2"
     ],
     "patch_buckling_stiffness": false
   },
@@ -78,7 +87,7 @@
     "render_all_samples": true,
     "sample_index": 0,
     "hdri_path": "",
-    "num_views": 48,
+    "num_views": 6,
     "resolution": 512,
     "camera_radius": 0.0,
     "radius_scale": 3.0,

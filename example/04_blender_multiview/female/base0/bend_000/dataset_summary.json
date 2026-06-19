@@ -12,8 +12,8 @@
   "world_strength": 0.2,
   "light_scale": 0.12,
   "exposure": -0.2,
-  "object_radius": 4.649492285220068,
-  "camera_radius": 13.948476855660205,
+  "object_radius": 4.585906357025835,
+  "camera_radius": 13.757719071077506,
   "intrinsics": {
     "width": 512,
     "height": 512,

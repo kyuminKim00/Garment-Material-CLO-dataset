@@ -2,7 +2,7 @@
   "render_all_samples": true,
   "manual_obj_root": "C:\\Users\\CGnA\\Desktop\\CLO\\example\\03_manual_obj_exports",
   "render_root": "C:\\Users\\CGnA\\Desktop\\CLO\\example\\04_blender_multiview",
-  "num_targets": 1,
+  "num_targets": 8,
   "samples": [
     {
       "sample_index": 0,
@@ -13,6 +13,76 @@
       "summary_json": "C:\\Users\\CGnA\\Desktop\\CLO\\example\\04_blender_multiview\\female\\base0\\bend_000\\dataset_summary.json",
       "images_dir": "C:\\Users\\CGnA\\Desktop\\CLO\\example\\04_blender_multiview\\female\\base0\\bend_000\\images",
       "geometry_ply": "C:\\Users\\CGnA\\Desktop\\CLO\\example\\04_blender_multiview\\female\\base0\\bend_000\\sparse\\0\\points3D.ply"
+    },
+    {
+      "sample_index": 1,
+      "sample_name": "female__base0__bend_001",
+      "obj_path": "C:\\Users\\CGnA\\Desktop\\CLO\\example\\03_manual_obj_exports\\female\\base0\\bend_001\\obj.obj",
+      "output_dir": "C:\\Users\\CGnA\\Desktop\\CLO\\example\\04_blender_multiview\\female\\base0\\bend_001",
+      "status": "success",
+      "summary_json": "C:\\Users\\CGnA\\Desktop\\CLO\\example\\04_blender_multiview\\female\\base0\\bend_001\\dataset_summary.json",
+      "images_dir": "C:\\Users\\CGnA\\Desktop\\CLO\\example\\04_blender_multiview\\female\\base0\\bend_001\\images",
+      "geometry_ply": "C:\\Users\\CGnA\\Desktop\\CLO\\example\\04_blender_multiview\\female\\base0\\bend_001\\sparse\\0\\points3D.ply"
+    },
+    {
+      "sample_index": 2,
+      "sample_name": "female__base1__bend_000",
+      "obj_path": "C:\\Users\\CGnA\\Desktop\\CLO\\example\\03_manual_obj_exports\\female\\base1\\bend_000\\obj.obj",
+      "output_dir": "C:\\Users\\CGnA\\Desktop\\CLO\\example\\04_blender_multiview\\female\\base1\\bend_000",
+      "status": "success",
+      "summary_json": "C:\\Users\\CGnA\\Desktop\\CLO\\example\\04_blender_multiview\\female\\base1\\bend_000\\dataset_summary.json",
+      "images_dir": "C:\\Users\\CGnA\\Desktop\\CLO\\example\\04_blender_multiview\\female\\base1\\bend_000\\images",
+      "geometry_ply": "C:\\Users\\CGnA\\Desktop\\CLO\\example\\04_blender_multiview\\female\\base1\\bend_000\\sparse\\0\\points3D.ply"
+    },
+    {
+      "sample_index": 3,
+      "sample_name": "female__base1__bend_001",
+      "obj_path": "C:\\Users\\CGnA\\Desktop\\CLO\\example\\03_manual_obj_exports\\female\\base1\\bend_001\\obj.obj",
+      "output_dir": "C:\\Users\\CGnA\\Desktop\\CLO\\example\\04_blender_multiview\\female\\base1\\bend_001",
+      "status": "success",
+      "summary_json": "C:\\Users\\CGnA\\Desktop\\CLO\\example\\04_blender_multiview\\female\\base1\\bend_001\\dataset_summary.json",
+      "images_dir": "C:\\Users\\CGnA\\Desktop\\CLO\\example\\04_blender_multiview\\female\\base1\\bend_001\\images",
+      "geometry_ply": "C:\\Users\\CGnA\\Desktop\\CLO\\example\\04_blender_multiview\\female\\base1\\bend_001\\sparse\\0\\points3D.ply"
+    },
+    {
+      "sample_index": 4,
+      "sample_name": "male__base0__bend_000",
+      "obj_path": "C:\\Users\\CGnA\\Desktop\\CLO\\example\\03_manual_obj_exports\\male\\base0\\bend_000\\obj.obj",
+      "output_dir": "C:\\Users\\CGnA\\Desktop\\CLO\\example\\04_blender_multiview\\male\\base0\\bend_000",
+      "status": "success",
+      "summary_json": "C:\\Users\\CGnA\\Desktop\\CLO\\example\\04_blender_multiview\\male\\base0\\bend_000\\dataset_summary.json",
+      "images_dir": "C:\\Users\\CGnA\\Desktop\\CLO\\example\\04_blender_multiview\\male\\base0\\bend_000\\images",
+      "geometry_ply": "C:\\Users\\CGnA\\Desktop\\CLO\\example\\04_blender_multiview\\male\\base0\\bend_000\\sparse\\0\\points3D.ply"
+    },
+    {
+      "sample_index": 5,
+      "sample_name": "male__base0__bend_001",
+      "obj_path": "C:\\Users\\CGnA\\Desktop\\CLO\\example\\03_manual_obj_exports\\male\\base0\\bend_001\\obj.obj",
+      "output_dir": "C:\\Users\\CGnA\\Desktop\\CLO\\example\\04_blender_multiview\\male\\base0\\bend_001",
+      "status": "success",
+      "summary_json": "C:\\Users\\CGnA\\Desktop\\CLO\\example\\04_blender_multiview\\male\\base0\\bend_001\\dataset_summary.json",
+      "images_dir": "C:\\Users\\CGnA\\Desktop\\CLO\\example\\04_blender_multiview\\male\\base0\\bend_001\\images",
+      "geometry_ply": "C:\\Users\\CGnA\\Desktop\\CLO\\example\\04_blender_multiview\\male\\base0\\bend_001\\sparse\\0\\points3D.ply"
+    },
+    {
+      "sample_index": 6,
+      "sample_name": "male__base1__bend_000",
+      "obj_path": "C:\\Users\\CGnA\\Desktop\\CLO\\example\\03_manual_obj_exports\\male\\base1\\bend_000\\obj.obj",
+      "output_dir": "C:\\Users\\CGnA\\Desktop\\CLO\\example\\04_blender_multiview\\male\\base1\\bend_000",
+      "status": "success",
+      "summary_json": "C:\\Users\\CGnA\\Desktop\\CLO\\example\\04_blender_multiview\\male\\base1\\bend_000\\dataset_summary.json",
+      "images_dir": "C:\\Users\\CGnA\\Desktop\\CLO\\example\\04_blender_multiview\\male\\base1\\bend_000\\images",
+      "geometry_ply": "C:\\Users\\CGnA\\Desktop\\CLO\\example\\04_blender_multiview\\male\\base1\\bend_000\\sparse\\0\\points3D.ply"
+    },
+    {
+      "sample_index": 7,
+      "sample_name": "male__base1__bend_001",
+      "obj_path": "C:\\Users\\CGnA\\Desktop\\CLO\\example\\03_manual_obj_exports\\male\\base1\\bend_001\\obj.obj",
+      "output_dir": "C:\\Users\\CGnA\\Desktop\\CLO\\example\\04_blender_multiview\\male\\base1\\bend_001",
+      "status": "success",
+      "summary_json": "C:\\Users\\CGnA\\Desktop\\CLO\\example\\04_blender_multiview\\male\\base1\\bend_001\\dataset_summary.json",
+      "images_dir": "C:\\Users\\CGnA\\Desktop\\CLO\\example\\04_blender_multiview\\male\\base1\\bend_001\\images",
+      "geometry_ply": "C:\\Users\\CGnA\\Desktop\\CLO\\example\\04_blender_multiview\\male\\base1\\bend_001\\sparse\\0\\points3D.ply"
     }
   ],
   "output_files": {

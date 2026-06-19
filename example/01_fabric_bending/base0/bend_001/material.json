@@ -8,11 +8,13 @@
   "output_zfab": "C:\\Users\\CGnA\\Desktop\\CLO\\example\\01_fabric_bending\\base0/bend_001\\fabric.zfab",
   "ui": {
     "bending_warp": 100.0,
-    "bending_weft": 100.0
+    "bending_weft": 100.0,
+    "bending_bias": 100.0
   },
   "actual": {
     "bending_warp": 2000000.0,
-    "bending_weft": 2000000.0
+    "bending_weft": 2000000.0,
+    "bending_bias": 2000000.0
   },
   "rule_text": [
     "0~10: +10",
@@ -25,7 +27,7 @@
     "100: 2000000"
   ],
   "rule_interpretation": "piecewise linear slope; UI=100 is clamped to actual=2000000",
-  "preserve_bending_v2_ratio": true,
+  "preserve_bending_v2_ratio": false,
   "internal_fields": {
     "warp_fields": [
       "fBuK",
@@ -34,7 +36,16 @@
     "weft_fields": [
       "fBvK",
       "fBvK_v2"
-    ]
+    ],
+    "bias_fields": [
+      "fBhK",
+      "fBhK_v2",
+      "fBLeftShearK",
+      "fBLeftShearK_v2",
+      "fBRightShearK",
+      "fBRightShearK_v2"
+    ],
+    "patch_bending_bias": true
   },
   "patch_result": {
     "input_zfab": "C:\\Users\\CGnA\\Desktop\\CLO\\example\\input\\fabrics\\base0.zfab",
@@ -42,12 +53,62 @@
     "fab_files": [
       "V2_Cut_Sew_Knit_Fleece_3.fab"
     ],
-    "total_patched": 8,
-    "preserve_bending_v2_ratio": true,
+    "total_patched": 16,
+    "preserve_bending_v2_ratio": false,
     "logs": [
       {
         "fab_file": "V2_Cut_Sew_Knit_Fleece_3.fab",
         "before_scan": {
+          "fBLeftShearK": [
+            {
+              "value_offset": 35142,
+              "value_float_le": 3279.649658203125,
+              "raw_hex": "65fa4c45"
+            },
+            {
+              "value_offset": 35740,
+              "value_float_le": 3279.649658203125,
+              "raw_hex": "65fa4c45"
+            }
+          ],
+          "fBLeftShearK_v2": [
+            {
+              "value_offset": 35336,
+              "value_float_le": 10303.3232421875,
+              "raw_hex": "4bfd2046"
+            },
+            {
+              "value_offset": 35956,
+              "value_float_le": 10303.3232421875,
+              "raw_hex": "4bfd2046"
+            }
+          ],
+          "fBRightShearK": [],
+          "fBRightShearK_v2": [
+            {
+              "value_offset": 35317,
+              "value_float_le": 10303.3232421875,
+              "raw_hex": "4bfd2046"
+            },
+            {
+              "value_offset": 35909,
+              "value_float_le": 10303.3232421875,
+              "raw_hex": "4bfd2046"
+            }
+          ],
+          "fBhK": [
+            {
+              "value_offset": 35275,
+              "value_float_le": 3279.649658203125,
+              "raw_hex": "65fa4c45"
+            },
+            {
+              "value_offset": 35878,
+              "value_float_le": 3279.649658203125,
+              "raw_hex": "65fa4c45"
+            }
+          ],
+          "fBhK_v2": [],
           "fBuK": [
             {
               "value_offset": 35259,
@@ -122,6 +183,56 @@
           ]
         },
         "after_scan": {
+          "fBLeftShearK": [
+            {
+              "value_offset": 35142,
+              "value_float_le": 2000000.0,
+              "raw_hex": "0024f449"
+            },
+            {
+              "value_offset": 35740,
+              "value_float_le": 2000000.0,
+              "raw_hex": "0024f449"
+            }
+          ],
+          "fBLeftShearK_v2": [
+            {
+              "value_offset": 35336,
+              "value_float_le": 2000000.0,
+              "raw_hex": "0024f449"
+            },
+            {
+              "value_offset": 35956,
+              "value_float_le": 2000000.0,
+              "raw_hex": "0024f449"
+            }
+          ],
+          "fBRightShearK": [],
+          "fBRightShearK_v2": [
+            {
+              "value_offset": 35317,
+              "value_float_le": 2000000.0,
+              "raw_hex": "0024f449"
+            },
+            {
+              "value_offset": 35909,
+              "value_float_le": 2000000.0,
+              "raw_hex": "0024f449"
+            }
+          ],
+          "fBhK": [
+            {
+              "value_offset": 35275,
+              "value_float_le": 2000000.0,
+              "raw_hex": "0024f449"
+            },
+            {
+              "value_offset": 35878,
+              "value_float_le": 2000000.0,
+              "raw_hex": "0024f449"
+            }
+          ],
+          "fBhK_v2": [],
           "fBuK": [
             {
               "value_offset": 35259,
@@ -134,7 +245,18 @@
               "raw_hex": "0024f449"
             }
           ],
-          "fBuK_v2": [],
+          "fBuK_v2": [
+            {
+              "value_offset": 35286,
+              "value_float_le": 2000000.0,
+              "raw_hex": "0024f449"
+            },
+            {
+              "value_offset": 35889,
+              "value_float_le": 2000000.0,
+              "raw_hex": "0024f449"
+            }
+          ],
           "fBucklingStiffnessU": [
             {
               "value_offset": 35003,
@@ -171,9 +293,20 @@
               "raw_hex": "0024f449"
             }
           ],
-          "fBvK_v2": []
+          "fBvK_v2": [
+            {
+              "value_offset": 35297,
+              "value_float_le": 2000000.0,
+              "raw_hex": "0024f449"
+            },
+            {
+              "value_offset": 35531,
+              "value_float_le": 2000000.0,
+              "raw_hex": "0024f449"
+            }
+          ]
         },
-        "patched_count": 8,
+        "patched_count": 16,
         "patch_log": [
           {
             "role": "warp",
@@ -198,18 +331,18 @@
             "field": "fBuK_v2",
             "value_offset": 35286,
             "old_value": 13346.1806640625,
-            "new_value": 6283185.5,
+            "new_value": 2000000.0,
             "old_hex": "b9885046",
-            "new_hex": "63bfbf4a"
+            "new_hex": "0024f449"
           },
           {
             "role": "warp",
             "field": "fBuK_v2",
             "value_offset": 35889,
             "old_value": 13346.1806640625,
-            "new_value": 6283185.5,
+            "new_value": 2000000.0,
             "old_hex": "b9885046",
-            "new_hex": "63bfbf4a"
+            "new_hex": "0024f449"
           },
           {
             "role": "weft",
@@ -234,18 +367,90 @@
             "field": "fBvK_v2",
             "value_offset": 35297,
             "old_value": 26695.416015625,
-            "new_value": 6283185.0,
+            "new_value": 2000000.0,
             "old_hex": "d58ed046",
-            "new_hex": "62bfbf4a"
+            "new_hex": "0024f449"
           },
           {
             "role": "weft",
             "field": "fBvK_v2",
             "value_offset": 35531,
             "old_value": 26695.416015625,
-            "new_value": 6283185.0,
+            "new_value": 2000000.0,
             "old_hex": "d58ed046",
-            "new_hex": "62bfbf4a"
+            "new_hex": "0024f449"
+          },
+          {
+            "role": "bias",
+            "field": "fBhK",
+            "value_offset": 35275,
+            "old_value": 3279.649658203125,
+            "new_value": 2000000.0,
+            "old_hex": "65fa4c45",
+            "new_hex": "0024f449"
+          },
+          {
+            "role": "bias",
+            "field": "fBhK",
+            "value_offset": 35878,
+            "old_value": 3279.649658203125,
+            "new_value": 2000000.0,
+            "old_hex": "65fa4c45",
+            "new_hex": "0024f449"
+          },
+          {
+            "role": "bias",
+            "field": "fBLeftShearK",
+            "value_offset": 35142,
+            "old_value": 3279.649658203125,
+            "new_value": 2000000.0,
+            "old_hex": "65fa4c45",
+            "new_hex": "0024f449"
+          },
+          {
+            "role": "bias",
+            "field": "fBLeftShearK",
+            "value_offset": 35740,
+            "old_value": 3279.649658203125,
+            "new_value": 2000000.0,
+            "old_hex": "65fa4c45",
+            "new_hex": "0024f449"
+          },
+          {
+            "role": "bias",
+            "field": "fBLeftShearK_v2",
+            "value_offset": 35336,
+            "old_value": 10303.3232421875,
+            "new_value": 2000000.0,
+            "old_hex": "4bfd2046",
+            "new_hex": "0024f449"
+          },
+          {
+            "role": "bias",
+            "field": "fBLeftShearK_v2",
+            "value_offset": 35956,
+            "old_value": 10303.3232421875,
+            "new_value": 2000000.0,
+            "old_hex": "4bfd2046",
+            "new_hex": "0024f449"
+          },
+          {
+            "role": "bias",
+            "field": "fBRightShearK_v2",
+            "value_offset": 35317,
+            "old_value": 10303.3232421875,
+            "new_value": 2000000.0,
+            "old_hex": "4bfd2046",
+            "new_hex": "0024f449"
+          },
+          {
+            "role": "bias",
+            "field": "fBRightShearK_v2",
+            "value_offset": 35909,
+            "old_value": 10303.3232421875,
+            "new_value": 2000000.0,
+            "old_hex": "4bfd2046",
+            "new_hex": "0024f449"
           }
         ]
       }

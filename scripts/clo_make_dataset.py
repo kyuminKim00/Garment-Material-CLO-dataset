@@ -111,6 +111,8 @@ OBJ_UV_PADDING = 0.0
 OBJ_UV_PRESERVE_ASPECT = True
 OBJ_USE_ZFAB_TEXTURES = True
 CLO_VERSION = "2026.0.312"
+EXPECT_BENDING_BIAS_PATCH = False
+EXPECTED_BENDING_BIAS_FIELDS = []
 
 
 # =============================================================================
@@ -348,6 +350,7 @@ def apply_config(config, args):
     global OBJ_NORMALIZE_UV_TO_0_1, OBJ_UV_PADDING, OBJ_UV_PRESERVE_ASPECT
     global OBJ_USE_ZFAB_TEXTURES
     global CLO_VERSION
+    global EXPECT_BENDING_BIAS_PATCH, EXPECTED_BENDING_BIAS_FIELDS
 
     output_root = (
         deep_get(config, ["project", "output_dir"])
@@ -529,6 +532,20 @@ def apply_config(config, args):
         deep_get(config, ["clo", "obj_use_zfab_textures"], OBJ_USE_ZFAB_TEXTURES)
     )
     CLO_VERSION = str(deep_get(config, ["clo", "clo_version"], CLO_VERSION))
+    EXPECT_BENDING_BIAS_PATCH = bool(
+        deep_get(
+            config,
+            ["stage_1_fabric_sampler", "settings", "patch_bending_bias"],
+            deep_get(config, ["fabric_sampler", "patch_bending_bias"], False),
+        )
+    )
+    EXPECTED_BENDING_BIAS_FIELDS = list(
+        deep_get(
+            config,
+            ["stage_1_fabric_sampler", "settings", "bias_fields"],
+            deep_get(config, ["fabric_sampler", "bias_fields"], []),
+        )
+    )
 
 
 def ensure_clo_api():
@@ -659,6 +676,67 @@ def build_fabric_variant_records(sample_dirs):
             "sample_id": sample_id,
         })
     return variants
+
+
+def validate_fabric_variant_metadata(fabric_variants):
+    if not EXPECT_BENDING_BIAS_PATCH:
+        return
+
+    stale_variants = []
+    missing_metadata = []
+    stale_field_variants = []
+    expected_bias_fields = {str(field) for field in EXPECTED_BENDING_BIAS_FIELDS}
+    for variant in fabric_variants:
+        material_data = variant.get("material_data")
+        if not isinstance(material_data, dict):
+            missing_metadata.append(variant)
+            continue
+
+        ui_values = material_data.get("ui") if isinstance(material_data.get("ui"), dict) else {}
+        actual_values = material_data.get("actual") if isinstance(material_data.get("actual"), dict) else {}
+        has_bias = "bending_bias" in ui_values or "bending_bias" in actual_values
+        if not has_bias:
+            stale_variants.append(variant)
+            continue
+
+        internal_fields = material_data.get("internal_fields") if isinstance(material_data.get("internal_fields"), dict) else {}
+        material_bias_fields = {str(field) for field in internal_fields.get("bias_fields", [])}
+        if expected_bias_fields and not expected_bias_fields.issubset(material_bias_fields):
+            stale_field_variants.append(variant)
+
+    if missing_metadata:
+        print(
+            "[Warning] Some fabric variants have no material metadata; "
+            "cannot verify whether bias bending was patched."
+        )
+
+    if stale_variants:
+        examples = "\n".join(
+            f"  - {item.get('source_sample_dir')}"
+            for item in stale_variants[:5]
+        )
+        raise RuntimeError(
+            "Fabric variants look stale: config expects bending bias to be patched, "
+            "but material.json has no ui/actual.bending_bias.\n"
+            "Regenerate fabric variants first:\n"
+            "  python scripts\\clo_fab_sampler.py --config dataset_config.json\n"
+            "Examples:\n"
+            f"{examples}"
+        )
+
+    if stale_field_variants:
+        examples = "\n".join(
+            f"  - {item.get('source_sample_dir')}"
+            for item in stale_field_variants[:5]
+        )
+        raise RuntimeError(
+            "Fabric variants look stale: config expects expanded bending bias fields, "
+            "but material.json was generated with an older bias_fields list.\n"
+            "Regenerate fabric variants first:\n"
+            "  python scripts\\clo_fab_sampler.py --config dataset_config.json\n"
+            "Examples:\n"
+            f"{examples}"
+        )
 
 
 def build_dataset_jobs(garments, fabric_variants):
@@ -2096,6 +2174,7 @@ def main(argv=None):
         raise RuntimeError(f"No .zfab sample folders found in {FABRIC_SAMPLE_ROOT}")
 
     fabric_variants = build_fabric_variant_records(all_sample_dirs)
+    validate_fabric_variant_metadata(fabric_variants)
     all_jobs = build_dataset_jobs(GARMENT_INPUTS, fabric_variants)
     jobs = all_jobs[:MAX_SAMPLES] if MAX_SAMPLES > 0 else all_jobs
 
