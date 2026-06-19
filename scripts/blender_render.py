@@ -11,7 +11,7 @@ import bpy
 from mathutils import Matrix, Vector
 
 
-CONFIG_JSON_PATH = Path(r"C:\Users\CGnA\Desktop\CLO\dataset_config.json")
+CONFIG_JSON_PATH = Path(r"/home/cgna/km/Garment-Material-CLO-dataset/dataset_config.json")
 
 SCRIPT_PATH = Path(__file__).resolve()
 SCRIPT_DIR = SCRIPT_PATH.parent

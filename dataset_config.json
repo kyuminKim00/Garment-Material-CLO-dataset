@@ -1,7 +1,7 @@
 {
   "project": {
     "name": "CLO garment dataset",
-    "output_dir": "C:/Users/CGnA/Desktop/CLO/dataset"
+    "output_dir": "/home/cgna/km/Garment-Material-CLO-dataset/dataset"
   },
   "inputs": {
     "input_dir": "input",
@@ -97,6 +97,15 @@
     "exposure": -0.2
   },
   "3dgs_training": {
-    "enabled": false
+    "enabled": true,
+    "gaussian_splatting_dir": "/home/cgna/km/gaussian-splatting",
+    "python_executable": "python",
+    "extra_args": [
+      "--save_iterations",
+      "30000"
+    ],
+    "render_after_train": false,
+    "render_preview_count": 4,
+    "render_extra_args": []
   }
 }
