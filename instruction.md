@@ -3,11 +3,10 @@
 ## 0. 목적
 
 본 데이터셋의 목적은 **3DGS 생성 전 단계**에서 사용할 수 있는 CLO 기반 합성 의류 데이터를 대량 제작하는 것이다.
-각 샘플은 **bending 물성 차이로 인해 drape 형상이 달라지는지** 확인 가능해야 하며, 최종적으로 다음 데이터를 제공해야 한다.
+각 샘플은 **bending 물성 차이로 인해 drape 형상이 달라지는지** 확인 가능해야 하며, 최종적으로 다음 데이터가 필요.
 
 - Multi-view RGB 이미지
-- 카메라 파라미터
-- COLMAP 형식 camera files
+- 카메라 파라미터 (COLMAP 형식 camera files)
 - Draped garment `.zprj`
 - Exported OBJ / MTL / texture
 - 각 샘플의 material metadata `.json`
@@ -27,35 +26,37 @@
 | 전체 garment 수 | 50개 이상 | `5 categories × 10 garments` |
 | Body model | 2개 | Male / Female base `.zprj`를 별도 입력으로 사용 |
 | Pose | 1개 | 기본 A pose 고정. pose variation 없음 |
-| Garment당 fabric 수 | 10개 이상 | 같은 garment geometry에 여러 base fabric `.zfab` 적용 |
-| Fabric당 bending 샘플 수 | config 지정 | `fabric_sampler.sample_count`로 조절. 기본 10개 |
-| Garment당 drape 수 | 200개 이상 | `2 body models × 10 fabrics × 10 bending` 기준 |
-| 전체 draped sample 수 | 10,000개 이상 | `5 × 10 garments × 2 bodies × 10 fabrics × 10 bending` 기준 |
+| Garment당 fabric 수 | 5개 이상 | 같은 garment geometry에 여러 base fabric `.zfab` 적용 |
+| Fabric당 bending 샘플 수 | 10개 이상 권장(config 지정) | `fabric_sampler.sample_count`로 조절 |
+| Garment당 drape 수 | 200개 이상 | `2 body models × 5 fabrics × 10 bending` 기준 |
+| 전체 draped sample 수 | 10,000개 이상 | `5 × 10 garments × 2 bodies × 5 fabrics × 10 bending` 기준 |
 | Sample당 render view | 48장 | 구면 카메라 샘플링 |
-| 전체 render image 수 | 480,000장 이상 | `10,000 samples × 48 views` |
+| 전체 render image 수 | 240,000장 이상 | `5,000 samples × 48 views` |
 
-### 1.2 최소 납품 기준
+### 1.2 최소 충족 기준
 
 | 항목 | 최소 기준 |
 |---|---:|
 | 전체 garment 수 | 50개 이상 |
-| Garment당 fabric 수 | 10개 이상 |
-| 전체 draped sample 수 | 10,000개 목표 |
-| 최종 유효 sample 수 | 10,000개 이상 |
-| 최종 유효 image 수 | 460,000장 이상 |
+| Garment당 fabric 수 | 5개 이상 |
+| 전체 draped sample 수 | 5,000개 목표 |
+| 최종 유효 sample 수 | 5,000개 이상 |
+| 최종 유효 image 수 | 240,000장 이상 |
 
 실패 샘플은 삭제하지 말고 `failure_report.csv`에 원인을 기록한다.
 
 ---
 
 ## 2. 제작할 의류 종류
+bending의 변화가 잘드러나기 위해서는 옷 자체가 몸에 밀착되기 보단 loose 해야함.
+garment를 고를 때 가능하면 loose한 옷 권장
 
 | Category ID | 옷 종류 | 필수 개수 | 권장 디자인 variation |
 |---|---|---:|---|
 | `tshirt` | 티셔츠 | 10개 이상 | 반팔/긴팔, loose/regular fit, neck shape 변화 |
 | `shirt` | 셔츠/블라우스 | 10개 이상 | 버튼 셔츠, 블라우스, 오버핏/슬림핏 |
-| `pants` | 바지 | 10개 이상 | 긴바지, 와이드 팬츠, 슬림 팬츠 |
-| `skirt` | 스커트 | 10개 이상 | A-line, pencil, pleated, short/long |
+| `pants` | 바지 | 10개 이상 | 긴바지, 와이드 팬츠 |
+| `skirt` | 스커트 | 10개 이상 | short/long |
 | `dress` | 드레스 | 10개 이상 | sleeveless, short sleeve, long dress, loose/tight |
 
 ### 주의사항
@@ -64,6 +65,15 @@
 - 동일한 garment에서 색/텍스처만 바꾼 것은 서로 다른 garment로 계산하지 않는다.
 - 목표는 단순 texture variation이 아니라 **fabric 물성 및 bending 변화에 따른 drape shape variation**이다.
 - 같은 base fabric에서 bending sample을 만들 때는 bending 외의 파라미터를 고정한다.
+
+### Fabric 선택 규칙
+
+- 각 garment에 대해 **서로 다른 fabric을 5개 이상** 사용한다.
+- fabric texture가 서로 너무 비슷한 것만 반복하지 않는다. 색, weave/knit pattern, roughness, normal/bump 느낌이 구분되는 fabric을 섞는다.
+- 투명하거나 반투명한 fabric은 사용하지 않는다. 내부 body/garment layer가 비쳐 보이면 제외한다.
+- 주름, 접힘, bending 차이가 시각적으로 잘 드러나는 fabric을 우선한다.
+- 너무 반짝이거나 과도하게 noisy한 texture는 geometry wrinkle 판별을 방해하면 제외한다.
+- 같은 base fabric에서 생성한 bending variants 안에서는 texture/color/density/thickness/stretch/shear를 고정하고 bending만 바꾼다.
 
 ---
 
@@ -286,7 +296,7 @@ DyeTech_CLO_Garment_Dataset/
 |---|---:|---|
 | `inputs.input_dir` | `input` | garment/fabric 입력 루트 |
 | `inputs.garments_dir` | `input/garments` | `female/base.zprj`, `male/base.zprj` 위치 |
-| `inputs.fabrics_dir` | `input/fabrics` | garment당 10개 이상의 `.zfab` 입력 위치 |
+| `inputs.fabrics_dir` | `input/fabrics` | garment당 5개 이상의 `.zfab` 입력 위치 |
 | `fabric_sampler.sample_count` | `10` | fabric당 bending variant 개수. config로 변경 가능 |
 | `fabric_sampler.sample_mode` | `paired` | Warp/Weft bending을 같은 UI 값으로 변경 |
 | `fabric_sampler.sample_distribution` | `ui_bucket_jittered` | bending 차이가 잘 보이도록 구간별 random sampling |
@@ -387,6 +397,9 @@ CLO에서 `draped_garment.zprj`를 열고 OBJ를 수동 export한다.
 | Draped ZPRJ | `draped_garment.zprj` 존재 |
 | OBJ | `obj.obj`, `obj.mtl` 존재 |
 | Texture | diffuse texture 존재, normal texture 가능하면 포함 |
+| Fabric diversity | 같은 garment에 쓰인 fabric들이 서로 다른 texture/재질감을 가져야 함 |
+| Non-transparent fabric | 투명/반투명 fabric이 아니어야 함 |
+| Wrinkle visibility | 주름과 접힘이 이미지에서 잘 보여야 함 |
 | Render images | 정확히 48장 존재 |
 | Camera metadata | `camera_parameters.json` 존재 |
 | COLMAP files | `cameras.txt`, `images.txt`, `points3D.txt`, `points3D.ply` 존재 |
@@ -464,7 +477,7 @@ CLO에서 `draped_garment.zprj`를 열고 OBJ를 수동 export한다.
 | Category | 티셔츠 1개, 드레스 1개 |
 | Garment 수 | 2개 |
 | Body model | Male/Female |
-| Fabric | garment당 10개 이상 |
+| Fabric | garment당 5개 이상 |
 | Bending | config 기준. 기본 10개 |
 | Draped sample | 400개 | 
 | Render image | 19,200장 |
@@ -475,7 +488,7 @@ Pilot set에서 확인할 것:
 2. UI 0과 UI 100 사이 drape 차이가 보이는지
 3. bucket jittered bending 값들이 50~100 고강성 구간에서 충분한 형태 차이를 만드는지
 4. OBJ export scale 1%가 Blender render와 맞는지
-5. 48-view camera parameter가 3DGS 학습 입력으로 바로 사용 가능한지
+5. 48-view camera parameter가 3DGS 학습 입력으로 바로 사용 가능한지 (연세대)
 6. 폴더명과 `dataset_index.csv`가 서로 일치하는지
 
 Pilot set이 통과한 뒤 전체 제작을 진행한다.
@@ -485,7 +498,10 @@ Pilot set이 통과한 뒤 전체 제작을 진행한다.
 ## 14. 하지 말아야 할 것
 
 - Pose variation을 넣지 않는다.
-- 같은 base fabric의 bending variants 안에서는 bending 외 다른 물성을 바꾸지 않는다.
+- **투명하거나 반투명한 fabric을 사용하지 않는다.**
+- texture가 거의 같은 fabric만 반복해서 fabric pool을 구성하지 않는다.
+- 주름/접힘이 잘 보이지 않는 지나치게 밋밋한 fabric만 사용하지 않는다.
+- 같은 base fabric의 bending variants 안에서는 bending weft/warp 외 다른 물성을 바꾸지 않는다.
 - 같은 base fabric의 bending variants 안에서는 texture/color를 바꾸지 않는다.
 - 카메라 개수, 해상도, 렌즈 값을 샘플마다 다르게 바꾸지 않는다.
 
@@ -498,12 +514,12 @@ Pilot set이 통과한 뒤 전체 제작을 진행한다.
 | 옷 종류 | 5개: 티셔츠, 셔츠/블라우스, 바지, 스커트, 드레스 |
 | Garment 개수 | category당 10개 이상, 총 50개 이상 |
 | Body model | Male/Female base `.zprj` 구분 |
-| Fabric | garment당 10개 이상, male/female 공통 fabric pool 사용 |
+| Fabric | garment당 5개 이상, male/female 공통 fabric pool 사용 |
 | Pose | 기본 pose 고정 |
 | 물성 변화 | Bending-Warp/Weft만 변경 |
 | Bending sample | config로 조절. 기본 10개, bucket jittered sampling |
-| Drape 결과 | 총 10,000개 이상 목표 |
+| Drape 결과 | 총 50,000개 이상 목표 |
 | Render | sample당 48-view, 512×512 |
-| 전체 이미지 | 480,000장 이상 목표 |
+| 전체 이미지 | 240,000장 이상 목표 |
 | 3DGS | 연세대에서 학습 |
 | 최종 산출물 | multi-view images, camera parameters, COLMAP files, OBJ, ZPRJ, material JSON |
