@@ -214,9 +214,8 @@ DyeTech_CLO_Garment_Dataset/
           fabric_009.zfab
       01_fabric_bending/
       02_draped_garments/
-      03_manual_obj_exports/
-      04_blender_multiview/
-      05_3dgs/
+      03_blender_multiview/
+      04_3dgs/
 
   shirt/
   pants/
@@ -246,26 +245,23 @@ DyeTech_CLO_Garment_Dataset/
     fabric_000/
       bend_000/
         draped_garment.zprj
+        obj.obj
+        obj.mtl
+        <CLO-exported texture files>
         material.json
         summary.json
   male/
     fabric_000/
       bend_000/
         draped_garment.zprj
+        obj.obj
+        obj.mtl
+        <CLO-exported texture files>
         material.json
         summary.json
   dataset_summary.json
 
-03_manual_obj_exports/
-  female/
-    fabric_000/
-      bend_000/
-        obj.obj
-        obj.mtl
-        obj_diffuse.png
-        obj_normal.png
-
-04_blender_multiview/
+03_blender_multiview/
   female/
     fabric_000/
       bend_000/
@@ -282,10 +278,10 @@ DyeTech_CLO_Garment_Dataset/
         mesh_vertices.csv
         dataset_summary.json
 
-05_3dgs/
+04_3dgs/
 ```
 
-`05_3dgs/`는 비워 두어도 된다.
+`04_3dgs/`는 비워 두어도 된다.
 
 ---
 
@@ -306,7 +302,7 @@ DyeTech_CLO_Garment_Dataset/
 | `fabric_sampler.bias_fields` | `["fBhK", "fBhK_v2", "fBLeftShearK", "fBLeftShearK_v2", "fBRightShearK", "fBRightShearK_v2"]` | CLO `.fab` 내부 Bias bending 후보 필드 |
 | `clo_simulation.sim_steps` | `300` | 기본 유지 |
 | `clo_simulation.save_sim_zprj` | `true` | draped `.zprj` 저장 |
-| `clo_simulation.export_obj` | `false` | OBJ는 CLO UI에서 수동 export |
+| `clo_simulation.export_obj` | `true` | simulation 후 `02_draped_garments` sample 폴더에 OBJ/MTL/texture 자동 export |
 | `clo_simulation.skip_render` | `true` | CLO 내 렌더는 사용하지 않음 |
 | `blender_render.render_all_samples` | `true` | 모든 OBJ 샘플 렌더링 |
 | `blender_render.num_views` | `48` | sample당 48 views |
@@ -346,7 +342,7 @@ DyeTech_CLO_Garment_Dataset/
     "sim_steps": 300,
     "save_sim_zprj": true,
     "skip_render": true,
-    "export_obj": false
+    "export_obj": true
   },
   "blender_render": {
     "render_all_samples": true,
@@ -367,32 +363,50 @@ DyeTech_CLO_Garment_Dataset/
 |---:|---|---|---|
 | 0 | 입력 파일 배치 | 파일 시스템 | `input/garments/female/base.zprj`, `input/garments/male/base.zprj`, `input/fabrics/*.zfab` |
 | 1 | Fabric bending sample 생성 | CLO Python Script Editor 또는 Python | `01_fabric_bending/<fabric_id>/<bend_id>/fabric.zfab`, `material.json` |
-| 2 | CLO simulation 후 draped ZPRJ 저장 | CLO Python Script Editor | `02_draped_garments/<male/female>/<fabric_id>/<bend_id>/draped_garment.zprj` |
-| 3 | Draped ZPRJ에서 OBJ 수동 export | CLO UI | `03_manual_obj_exports/<male/female>/<fabric_id>/<bend_id>/obj.obj` |
-| 4 | Blender multi-view rendering | Blender Python | `04_blender_multiview/<male/female>/<fabric_id>/<bend_id>/images`, camera files |
-| 5 | 3DGS 학습 | 실행하지 않음 | 빈 `05_3dgs/` 유지 |
+| 2 | CLO simulation 후 draped ZPRJ + OBJ export | CLO Python Script Editor | `02_draped_garments/<male/female>/<fabric_id>/<bend_id>/draped_garment.zprj`, `obj.obj`, `obj.mtl`, texture |
+| 3 | Blender multi-view rendering | Blender Python | `03_blender_multiview/<male/female>/<fabric_id>/<bend_id>/images`, camera files |
+| 4 | 3DGS 학습 | 실행하지 않음 | 빈 `04_3dgs/` 유지 |
 
 ---
 
-## 9. OBJ 수동 export 규칙
+## 9. 01-03 한번에 실행
 
-CLO에서 `draped_garment.zprj`를 열고 OBJ를 수동 export한다.
+`scripts/run_stages_01_03.py`는 CLO를 새로 실행하지 않는다. CLO Python Script Editor에 코드를 붙여넣어 실행하는 용도다.
+
+동작 순서:
+
+1. 현재 CLO Python 프로세스에서 `clo_fab_sampler.py` 실행
+2. 현재 CLO Python 프로세스에서 `clo_make_dataset.py` 실행
+3. Blender를 `--background`로 실행해서 `blender_render.py` 실행
+
+기본 config 경로는 스크립트 안에 하드코딩되어 있다.
+
+```python
+CONFIG_JSON_PATH = r"C:\Users\CGnA\Desktop\CLO\dataset_config.json"
+```
+
+Blender가 `PATH`에 없으면 `--blender` 인자로 Blender 실행 파일 경로를 넘긴다.
+
+---
+
+## 10. OBJ 자동 export 규칙
+
+`scripts/clo_make_dataset.py`가 simulation 직후 같은 sample 폴더에 OBJ를 자동 export한다.
 
 | 항목 | 규칙 |
 |---|---|
-| 폴더명 | `02_draped_garments/<body_id>/<fabric_id>/<bend_id>`와 동일해야 함 |
+| 폴더명 | `02_draped_garments/<body_id>/<fabric_id>/<bend_id>` |
 | OBJ 파일명 | `obj.obj` |
 | MTL 파일명 | `obj.mtl` |
-| Diffuse texture | `obj_diffuse.png` 또는 `obj_diffuse_1001.png` |
-| Normal texture | `obj_normal.png` 또는 `obj_normal_1001.png` |
-| UV | pattern이 서로 겹치지 않도록 0~1 범위 내 배치 |
+| Texture | CLO export가 생성하고 `obj.mtl`이 참조하는 texture 파일 |
+| 후처리 | texture 복사, MTL rewrite, UV rewrite를 하지 않음 |
 | Export scale | `1%` |
 
 ---
 
-## 10. 품질 검수 기준
+## 11. 품질 검수 기준
 
-### 10.1 샘플 단위 검수
+### 11.1 샘플 단위 검수
 
 각 sample은 아래 조건을 만족해야 한다.
 
@@ -411,7 +425,7 @@ CLO에서 `draped_garment.zprj`를 열고 OBJ를 수동 export한다.
 | Geometry | 심한 찢어짐, 폭발, 비정상 접힘 없음 |
 | Visibility | 모든 view에서 garment가 화면 내에 있음 |
 
-### 10.2 Bending variation 검수
+### 11.2 Bending variation 검수
 
 각 garment/body/fabric 조합마다 `fabric_sampler.sample_count`개 bending 결과를 비교한다.
 
@@ -425,7 +439,7 @@ CLO에서 `draped_garment.zprj`를 열고 OBJ를 수동 export한다.
 
 ---
 
-## 11. Dataset index 파일
+## 12. Dataset index 파일
 
 최종 납품 시 `dataset_index.csv`와 `dataset_index.json`을 함께 제공한다.
 
@@ -454,7 +468,7 @@ CLO에서 `draped_garment.zprj`를 열고 OBJ를 수동 export한다.
 
 ---
 
-## 12. 납품 파일 목록
+## 13. 납품 파일 목록
 
 최종 납품에는 아래 항목이 모두 포함되어야 한다.
 
@@ -465,15 +479,14 @@ CLO에서 `draped_garment.zprj`를 열고 OBJ를 수동 export한다.
 | `production_summary.json` | 필수 | 전체 제작 개수, 실패 개수, config 요약 |
 | `failure_report.csv` | 필수 | 실패 샘플 및 원인 |
 | `01_fabric_bending/` | 필수 | bending별 `.zfab`, material json |
-| `02_draped_garments/` | 필수 | draped `.zprj` |
-| `03_manual_obj_exports/` | 필수 | OBJ/MTL/texture |
-| `04_blender_multiview/` | 필수 | 48-view image, camera files |
-| `05_3dgs/` | 선택 | 현재는 비워둠(연세대에서 학습) |
+| `02_draped_garments/` | 필수 | draped `.zprj`, OBJ/MTL/texture, material json |
+| `03_blender_multiview/` | 필수 | 48-view image, camera files |
+| `04_3dgs/` | 선택 | 현재는 비워둠(연세대에서 학습) |
 | `preview_contact_sheet/` | 권장 | 빠른 시각 검수용 |
 
 ---
 
-## 13. 먼저 제작할 pilot set
+## 14. 먼저 제작할 pilot set
 
 전체 제작 전에 아래 pilot set을 먼저 만든다.
 
@@ -500,7 +513,7 @@ Pilot set이 통과한 뒤 전체 제작을 진행한다.
 
 ---
 
-## 14. 하지 말아야 할 것
+## 15. 하지 말아야 할 것
 
 - Pose variation을 넣지 않는다.
 - **투명하거나 반투명한 fabric을 사용하지 않는다.**
@@ -512,7 +525,7 @@ Pilot set이 통과한 뒤 전체 제작을 진행한다.
 
 ---
 
-## 15. 핵심 요약
+## 16. 핵심 요약
 
 | 항목 | 최종 요청 |
 |---|---|

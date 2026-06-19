@@ -1,7 +1,7 @@
 # CLO Dataset Instructions 
 각 단계를 순서대로 따로 실행하고, 모든 경로는 하나의 config에서 관리한다.
 
-기본적으로 3번 단계 빼고는 각 단계의 코드를 순서대로 실행하면 코드 이해 없이 코드 복사/붙여넣기로 실행 가능하다.
+각 단계의 코드를 순서대로 실행하면 코드 이해 없이 코드 복사/붙여넣기로 실행 가능하다.
 
 Dataset 생성 instruction은 instruction.md 에 명시
 
@@ -44,18 +44,13 @@ output_dir/
       fabric_a/
         bend_000/
           draped_garment.zprj
+          obj.obj
+          obj.mtl
+          <CLO-exported texture files>
           material.json
           summary.json
     dataset_summary.json
-  03_manual_obj_exports/
-    base/
-      fabric_a/
-        bend_000/
-          obj.obj
-          obj.mtl
-          obj_diffuse*.png
-          obj_normal*.png
-  04_blender_multiview/
+  03_blender_multiview/
     base/
       fabric_a/
         bend_000/
@@ -68,7 +63,7 @@ output_dir/
           camera_parameters.json
           mesh_vertices.csv
           dataset_summary.json
-  05_3dgs/
+  04_3dgs/
     base/
       fabric_a/
         bend_000/
@@ -110,7 +105,7 @@ Output:
 - `output_dir/01_fabric_bending/summary_bending_sampling.json`
 
 
-## 2. CLO Simulation 후 Draped ZPRJ 저장
+## 2. CLO Simulation 후 Draped ZPRJ 및 OBJ 저장
 
 Script:
 
@@ -134,43 +129,21 @@ Input:
 Output:
 
 - `output_dir/02_draped_garments/<garment_id>/<fabric_id>/<bend_id>/draped_garment.zprj`
+- `output_dir/02_draped_garments/<garment_id>/<fabric_id>/<bend_id>/obj.obj`
+- `output_dir/02_draped_garments/<garment_id>/<fabric_id>/<bend_id>/obj.mtl`
+- `output_dir/02_draped_garments/<garment_id>/<fabric_id>/<bend_id>/<CLO-exported texture files>`
 - `output_dir/02_draped_garments/<garment_id>/<fabric_id>/<bend_id>/summary.json`
 - `output_dir/02_draped_garments/dataset_summary.json`
-- `output_dir/03_manual_obj_exports/<garment_id>/<fabric_id>/<bend_id>/`
-- `output_dir/05_3dgs/<garment_id>/<fabric_id>/<bend_id>/`
+- `output_dir/04_3dgs/<garment_id>/<fabric_id>/<bend_id>/`
 
 
 Important:
 
-- 이 단계에서는 OBJ export를 하지 않는다.
-- `clo_simulation.export_obj`는 `false`로 둔다.
+- 이 단계에서 OBJ/MTL/texture를 자동 export한다.
+- `clo_simulation.export_obj`는 `true`로 둔다.
 - CLO Python Script Editor 안에서 실행한다.
 
-## 3. Draped ZPRJ에서 OBJ 수동 Export
-
-Script:
-
-없음. CLO UI에서 수동으로 export한다.
-
-Input:
-
-- `output_dir/02_draped_garments/<sample>/draped_garment.zprj`
-
-Output:
-
-- `output_dir/03_manual_obj_exports/<sample>/obj.obj`
-- `output_dir/03_manual_obj_exports/<sample>/obj.mtl`
-- `output_dir/03_manual_obj_exports/<sample>/obj_diffuse.png` 또는 `obj_diffuse_1001.png`
-- `output_dir/03_manual_obj_exports/<sample>/obj_normal.png` 또는 `obj_normal_1001.png`
-
-Manual rule:
-
-- `<sample>` 폴더 이름은 2단계 sample 폴더와 동일하게 맞춘다.
-- 예: `000_base_000`
-- Export 하기 전에 UV map에서 각 pattern을 겹치지 않게하고 0~1 범위 내로 옮겨야한다.
-- Export 팝업 창에서 scale은 1%로 바꿔야한다(이후 blender에서 import 할 때의 scale을 고려).
-
-## 4. Blender Multi-view Rendering
+## 3. Blender Multi-view Rendering
 
 Script:
 
@@ -179,7 +152,6 @@ Script:
 Config sections:
 
 - `project.output_dir`
-- `naming.manual_obj_dir`
 - `naming.render_dir`
 - `blender_render.render_all_samples`
 - `blender_render.sample_index`
@@ -189,30 +161,49 @@ Input:
 
 `blender_render.render_all_samples`로 렌더 범위를 고른다.
 
-- `true`: `output_dir/03_manual_obj_exports/*/obj.obj`가 있는 모든 sample을 렌더링한다.
+- `true`: `output_dir/02_draped_garments/*/obj.obj`가 있는 모든 sample을 렌더링한다.
 - `false`: `blender_render.sample_index` 하나만 렌더링한다.
 
 예를 들어 `render_all_samples = true`이면 자동으로 아래 구조를 전부 읽는다.
 
-- `output_dir/03_manual_obj_exports/<sample>/obj.obj`
-- `output_dir/03_manual_obj_exports/<sample>/obj_diffuse*.png`
-- `output_dir/03_manual_obj_exports/<sample>/obj_normal*.png`
-
+- `output_dir/02_draped_garments/<sample>/obj.obj`
+- `output_dir/02_draped_garments/<sample>/obj.mtl`
+- `output_dir/02_draped_garments/<sample>/<CLO-exported texture files>`
 
 Output:
 
-- `output_dir/04_blender_multiview/<sample>/images/*.png`
-- `output_dir/04_blender_multiview/<sample>/camera_parameters.json`
-- `output_dir/04_blender_multiview/<sample>/sparse/0/cameras.txt`
-- `output_dir/04_blender_multiview/<sample>/sparse/0/images.txt`
-- `output_dir/04_blender_multiview/<sample>/sparse/0/points3D.txt`
-- `output_dir/04_blender_multiview/<sample>/sparse/0/points3D.ply`
-- `output_dir/04_blender_multiview/<sample>/mesh_vertices.csv`
-- `output_dir/04_blender_multiview/<sample>/dataset_summary.json`
-- `output_dir/04_blender_multiview/pipeline_summary.json`
+- `output_dir/03_blender_multiview/<sample>/images/*.png`
+- `output_dir/03_blender_multiview/<sample>/camera_parameters.json`
+- `output_dir/03_blender_multiview/<sample>/sparse/0/cameras.txt`
+- `output_dir/03_blender_multiview/<sample>/sparse/0/images.txt`
+- `output_dir/03_blender_multiview/<sample>/sparse/0/points3D.txt`
+- `output_dir/03_blender_multiview/<sample>/sparse/0/points3D.ply`
+- `output_dir/03_blender_multiview/<sample>/mesh_vertices.csv`
+- `output_dir/03_blender_multiview/<sample>/dataset_summary.json`
+- `output_dir/03_blender_multiview/pipeline_summary.json`
 
 
 sample 하나만 렌더링하려면 `blender_render.render_all_samples`를 `false`로 바꾸고 `blender_render.sample_index`를 지정한다.
+
+## 4. 01-03 한번에 실행
+
+Script:
+
+`PATH/scripts/run_stages_01_03.py`
+
+이 스크립트는 CLO를 새로 실행하지 않는다. CLO Python Script Editor에 코드를 붙여넣어 실행하면 아래 순서로 진행한다.
+
+1. 현재 CLO Python 프로세스에서 `clo_fab_sampler.py` 실행
+2. 현재 CLO Python 프로세스에서 `clo_make_dataset.py` 실행
+3. Blender를 background mode로 실행해서 `blender_render.py` 실행
+
+Config 경로는 스크립트 안에 기본값으로 하드코딩되어 있다.
+
+```python
+CONFIG_JSON_PATH = r"C:\Users\CGnA\Desktop\CLO\dataset_config.json"
+```
+
+Blender가 `PATH`에 없으면 `--blender`로 Blender 실행 파일 경로를 넘긴다.
 
 ## 5. 3DGS 학습
 
@@ -224,13 +215,13 @@ Current config:
 
 나중에 사용할 input:
 
-- 4단계 multi-view images
+- 3단계 multi-view images
 - COLMAP camera files
 - geometry `.ply`
 
 나중에 만들 output:
 
-- `output_dir/05_3dgs/garment_3dgs.ply`
+- `output_dir/04_3dgs/garment_3dgs.ply`
 
 ## Current Multi-Body Layout
 
@@ -257,7 +248,7 @@ The pipeline discovers all `.zprj` and `.zfab` files automatically.
   male/<fabric_id>/<bend_id>/
 ```
 
-The same relative layout is used for `03_manual_obj_exports`, `04_blender_multiview`, and `05_3dgs`.
+The same relative layout is used for `02_draped_garments`, `03_blender_multiview`, and `04_3dgs`.
 
 Set `fabric_sampler.sample_count` to choose how many bending variants are generated per fabric.
 For `ui_bucket_jittered`, `sample_bins[*].count` acts as the relative bucket weight, while `sample_count` controls the final total count including the 0 and 100 anchors.

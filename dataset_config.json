@@ -1,7 +1,7 @@
 {
   "project": {
     "name": "CLO garment dataset",
-    "output_dir": "C:/Users/CGnA/Desktop/CLO/example"
+    "output_dir": "C:/Users/CGnA/Desktop/CLO/dataset"
   },
   "inputs": {
     "input_dir": "input",
@@ -11,9 +11,8 @@
   "naming": {
     "fabric_dir": "01_fabric_bending",
     "draped_dir": "02_draped_garments",
-    "manual_obj_dir": "03_manual_obj_exports",
-    "render_dir": "04_blender_multiview",
-    "gs_dir": "05_3dgs",
+    "render_dir": "03_blender_multiview",
+    "gs_dir": "04_3dgs",
     "fabric_variant_dir_template": "{fabric_id}/{bend_id}",
     "bend_dir_template": "bend_{index:03d}",
     "fabric_file_template": "fabric.zfab",
@@ -21,13 +20,11 @@
     "sample_dir_template": "{garment_id}/{fabric_id}/{bend_id}",
     "draped_zprj_file": "draped_garment.zprj",
     "sample_summary_file": "summary.json",
-    "manual_obj_file": "obj.obj",
-    "manual_mtl_file": "obj.mtl",
-    "manual_diffuse_file": "obj_diffuse.png",
-    "manual_normal_file": "obj_normal.png"
+    "obj_file": "obj.obj",
+    "mtl_file": "obj.mtl"
   },
   "fabric_sampler": {
-    "sample_count": 2,
+    "sample_count": 10,
     "sample_mode": "paired",
     "sample_distribution": "ui_bucket_jittered",
     "sample_seed": 0,
@@ -81,13 +78,13 @@
     "stop_on_first_failure": true,
     "save_sim_zprj": true,
     "skip_render": true,
-    "export_obj": false
+    "export_obj": true
   },
   "blender_render": {
     "render_all_samples": true,
     "sample_index": 0,
     "hdri_path": "",
-    "num_views": 6,
+    "num_views": 48,
     "resolution": 512,
     "camera_radius": 0.0,
     "radius_scale": 3.0,

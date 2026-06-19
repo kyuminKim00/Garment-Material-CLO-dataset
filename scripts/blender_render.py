@@ -13,6 +13,33 @@ from mathutils import Matrix, Vector
 
 CONFIG_JSON_PATH = Path(r"C:\Users\CGnA\Desktop\CLO\dataset_config.json")
 
+SCRIPT_PATH = Path(__file__).resolve()
+SCRIPT_DIR = SCRIPT_PATH.parent
+
+repo_candidates = [
+    SCRIPT_DIR,
+    SCRIPT_DIR.parent,
+    Path(r"C:\Users\CGnA\Desktop\CLO"),
+]
+
+REPO_ROOT = next(
+    (
+        p for p in repo_candidates
+        if (p / "utils" / "blender_texture_mapping.py").exists()
+    ),
+    SCRIPT_DIR,
+)
+
+if str(REPO_ROOT) not in sys.path:
+    sys.path.insert(0, str(REPO_ROOT))
+
+from utils.blender_texture_mapping import (  # noqa: E402
+    build_material as build_texture_mapped_material,
+    discover_texture_files,
+    parse_mtl_texture_refs,
+    pick_textures,
+)
+
 
 def load_config(path):
     if not path:
@@ -81,11 +108,16 @@ def resolve_texture_path(expected_path, obj_path, kind):
     if expected_path.exists():
         return expected_path.resolve()
 
-    pattern = "obj_diffuse*.png" if kind == "diffuse" else "obj_normal*.png"
-    matches = sorted(expected_path.parent.glob(pattern))
-    if matches:
-        print(f"[Info] {kind} texture resolved: {expected_path} -> {matches[0]}")
-        return matches[0].resolve()
+    patterns = (
+        ["obj_diffuse*.png", "*BASE_rgb*.png", "*basecolor*.png", "*diffuse*.png", "*albedo*.png"]
+        if kind == "diffuse"
+        else ["obj_normal*.png", "*NRM*.png", "*normal*.png", "*bump*.png"]
+    )
+    for pattern in patterns:
+        matches = sorted(expected_path.parent.glob(pattern))
+        if matches:
+            print(f"[Info] {kind} texture resolved: {expected_path} -> {matches[0]}")
+            return matches[0].resolve()
 
     return expected_path.resolve()
 
@@ -409,6 +441,47 @@ def build_material(diffuse_path, normal_path, normal_strength):
         links.new(normal_map.outputs["Normal"], principled.inputs["Normal"])
 
     return material
+
+
+def build_material_from_obj_dir(obj_path, explicit_diffuse_path, explicit_normal_path, normal_strength):
+    obj_dir = Path(obj_path).parent
+    mtl_path = Path(obj_path).with_suffix(".mtl")
+    texture_paths = discover_texture_files(obj_dir)
+    mtl_refs = parse_mtl_texture_refs(mtl_path, obj_dir)
+    textures = pick_textures(texture_paths, mtl_refs)
+
+    if explicit_diffuse_path:
+        textures["diffuse"] = Path(explicit_diffuse_path).expanduser().resolve()
+    if explicit_normal_path:
+        textures["normal"] = Path(explicit_normal_path).expanduser().resolve()
+
+    material, loaded_textures = build_texture_mapped_material(
+        textures,
+        normal_strength=normal_strength,
+    )
+    return material, {
+        "mtl_path": str(mtl_path) if mtl_path.exists() else "",
+        "texture_files": [str(path) for path in texture_paths],
+        "mtl_refs": {key: str(value) for key, value in mtl_refs.items()},
+        "selected_textures": {
+            key: ([str(item) for item in value] if isinstance(value, list) else (str(value) if value else ""))
+            for key, value in textures.items()
+        },
+        "loaded_textures": loaded_textures,
+    }
+
+
+def material_uses_image_textures(material):
+    if material is None or not material.use_nodes:
+        return False
+    for node in material.node_tree.nodes:
+        if node.bl_idname == "ShaderNodeTexImage" and getattr(node, "image", None):
+            return True
+    return False
+
+
+def imported_materials_use_textures(obj):
+    return any(material_uses_image_textures(material) for material in obj.data.materials)
 
 
 def assign_material(obj, material):
@@ -843,15 +916,15 @@ def render_one_sample(target, render_settings):
     normal_path = resolve_texture_path(normal_path_value, obj_path, "normal") if normal_path_value else None
     hdri_path = Path(hdri_path_value).expanduser().resolve() if hdri_path_value else None
 
-    if diffuse_path and not diffuse_path.exists():
+    if diffuse_path_value and diffuse_path and not diffuse_path.exists():
         raise FileNotFoundError(
             f"Diffuse texture not found: {diffuse_path}. "
-            f"Expected it under {obj_path.parent} as obj_diffuse*.png."
+            f"Expected it under {obj_path.parent}."
         )
-    if normal_path and not normal_path.exists():
+    if normal_path_value and normal_path and not normal_path.exists():
         raise FileNotFoundError(
             f"Normal map not found: {normal_path}. "
-            f"Expected it under {obj_path.parent} as obj_normal*.png."
+            f"Expected it under {obj_path.parent}."
         )
     if hdri_path and not hdri_path.exists():
         raise FileNotFoundError(f"HDRI file not found: {hdri_path}")
@@ -868,8 +941,33 @@ def render_one_sample(target, render_settings):
     center_mesh_at_origin(mesh_obj)
     configure_mesh_shading(mesh_obj)
 
-    material = build_material(diffuse_path, normal_path, render_settings["normal_strength"])
-    assign_material(mesh_obj, material)
+    if imported_materials_use_textures(mesh_obj) and not diffuse_path and not normal_path:
+        texture_report = {
+            "mode": "use_imported_obj_mtl_materials",
+            "mtl_path": str(Path(obj_path).with_suffix(".mtl"))
+            if Path(obj_path).with_suffix(".mtl").exists()
+            else "",
+            "material_names": [mat.name for mat in mesh_obj.data.materials],
+            "material_count": len(mesh_obj.data.materials),
+            "uv_layers": [uv.name for uv in mesh_obj.data.uv_layers],
+            "loaded_textures": {},
+        }
+    else:
+        material, texture_report = build_material_from_obj_dir(
+            obj_path,
+            diffuse_path,
+            normal_path,
+            render_settings["normal_strength"],
+        )
+        assign_material(mesh_obj, material)
+        texture_report["mode"] = (
+            "fallback_texture_mapping"
+            if not diffuse_path and not normal_path
+            else "explicit_texture_mapping"
+        )
+        texture_report["material_names"] = [mat.name for mat in mesh_obj.data.materials]
+        texture_report["material_count"] = len(mesh_obj.data.materials)
+        texture_report["uv_layers"] = [uv.name for uv in mesh_obj.data.uv_layers]
 
     object_radius = compute_object_radius(mesh_obj)
     camera_radius_arg = render_settings["camera_radius"]
@@ -906,8 +1004,9 @@ def render_one_sample(target, render_settings):
         "sample_index": sample_index,
         "sample_name": sample_name,
         "obj_path": str(obj_path),
-        "diffuse_path": str(diffuse_path) if diffuse_path else "",
-        "normal_path": str(normal_path) if normal_path else "",
+        "diffuse_path": texture_report.get("loaded_textures", {}).get("diffuse", ""),
+        "normal_path": texture_report.get("loaded_textures", {}).get("normal", ""),
+        "texture_mapping": texture_report,
         "hdri_path": str(hdri_path) if hdri_path else "",
         "output_dir": str(output_dir),
         "num_views": render_settings["num_views"],
@@ -946,14 +1045,14 @@ def sample_index_from_dir_name(name, fallback):
         return fallback
 
 
-def discover_render_targets(manual_obj_root, render_root, obj_file_name, diffuse_file_name, normal_file_name):
-    if not manual_obj_root.exists():
-        raise FileNotFoundError(f"Manual OBJ root not found: {manual_obj_root}")
+def discover_render_targets(obj_root, render_root, obj_file_name):
+    if not obj_root.exists():
+        raise FileNotFoundError(f"OBJ root not found: {obj_root}")
 
     targets = []
-    for obj_path in sorted(manual_obj_root.rglob(obj_file_name)):
+    for obj_path in sorted(obj_root.rglob(obj_file_name)):
         sample_dir = obj_path.parent
-        rel_dir = sample_dir.relative_to(manual_obj_root)
+        rel_dir = sample_dir.relative_to(obj_root)
         sample_name = "__".join(rel_dir.parts)
         if not sample_name:
             sample_name = sample_dir.name
@@ -963,14 +1062,14 @@ def discover_render_targets(manual_obj_root, render_root, obj_file_name, diffuse
                 "sample_index": sample_index,
                 "sample_name": sample_name,
                 "obj_path": str(obj_path),
-                "diffuse_path": str(sample_dir / diffuse_file_name),
-                "normal_path": str(sample_dir / normal_file_name),
+                "diffuse_path": "",
+                "normal_path": "",
                 "output_dir": str(render_root / rel_dir),
             }
         )
 
     if not targets:
-        raise RuntimeError(f"No sample folders with {obj_file_name} found in {manual_obj_root}")
+        raise RuntimeError(f"No sample folders with {obj_file_name} found in {obj_root}")
     return targets
 
 
@@ -991,11 +1090,13 @@ def main():
     )
     output_root_path = Path(output_root).expanduser() if output_root else Path(".")
 
-    manual_obj_root = output_root_path / deep_get(config, ["naming", "manual_obj_dir"], "03_manual_obj_exports")
+    obj_root = output_root_path / deep_get(config, ["naming", "draped_dir"], "02_draped_garments")
     render_root = output_root_path / deep_get(config, ["naming", "render_dir"], "04_blender_multiview")
-    obj_file_name = deep_get(config, ["naming", "manual_obj_file"], "obj.obj")
-    diffuse_file_name = deep_get(config, ["naming", "manual_diffuse_file"], "obj_diffuse.png")
-    normal_file_name = deep_get(config, ["naming", "manual_normal_file"], "obj_normal.png")
+    obj_file_name = deep_get(
+        config,
+        ["naming", "obj_file"],
+        "obj.obj",
+    )
 
     render_all_samples = parse_bool(
         choose(
@@ -1041,44 +1142,42 @@ def main():
 
     if explicit_obj_path or explicit_output_dir:
         sample_dir_name = derived_sample_dir_name(config, sample_index)
-        sample_manual_dir = manual_obj_root / sample_dir_name
-        obj_path = explicit_obj_path or str(sample_manual_dir / obj_file_name)
+        sample_obj_dir = obj_root / sample_dir_name
+        obj_path = explicit_obj_path or str(sample_obj_dir / obj_file_name)
         output_dir = explicit_output_dir or str(render_root / sample_dir_name)
         targets = [
             {
                 "sample_index": sample_index,
                 "sample_name": sample_dir_name,
                 "obj_path": obj_path,
-                "diffuse_path": explicit_diffuse_path or str(sample_manual_dir / diffuse_file_name),
-                "normal_path": explicit_normal_path or str(sample_manual_dir / normal_file_name),
+                "diffuse_path": explicit_diffuse_path,
+                "normal_path": explicit_normal_path,
                 "output_dir": output_dir,
             }
         ]
     elif render_all_samples:
         targets = discover_render_targets(
-            manual_obj_root,
+            obj_root,
             render_root,
             obj_file_name,
-            diffuse_file_name,
-            normal_file_name,
         )
     else:
         sample_dir_name = derived_sample_dir_name(config, sample_index)
-        sample_manual_dir = manual_obj_root / sample_dir_name
+        sample_obj_dir = obj_root / sample_dir_name
         targets = [
             {
                 "sample_index": sample_index,
                 "sample_name": sample_dir_name,
-                "obj_path": str(sample_manual_dir / obj_file_name),
-                "diffuse_path": str(sample_manual_dir / diffuse_file_name),
-                "normal_path": str(sample_manual_dir / normal_file_name),
+                "obj_path": str(sample_obj_dir / obj_file_name),
+                "diffuse_path": explicit_diffuse_path,
+                "normal_path": explicit_normal_path,
                 "output_dir": str(render_root / sample_dir_name),
             }
         ]
 
     pipeline_summary = {
         "render_all_samples": render_all_samples,
-        "manual_obj_root": str(manual_obj_root),
+        "obj_root": str(obj_root),
         "render_root": str(render_root),
         "num_targets": len(targets),
         "samples": [],

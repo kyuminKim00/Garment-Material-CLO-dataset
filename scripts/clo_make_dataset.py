@@ -22,10 +22,8 @@ import time
 import glob
 import sys
 import argparse
-import threading
-import zipfile
-import ctypes
-import ctypes.wintypes
+import importlib.util
+import inspect
 
 try:
     import import_api
@@ -55,6 +53,25 @@ if not SCRIPT_FILE or str(SCRIPT_FILE).startswith("<") or not os.path.exists(SCR
     SCRIPT_FILE = FALLBACK_SCRIPT_FILE
 SCRIPT_DIR = os.path.abspath(os.path.join(os.path.dirname(SCRIPT_FILE), ".."))
 CONFIG_JSON_PATH = r"C:\Users\CGnA\Desktop\CLO\dataset_config.json"
+if SCRIPT_DIR not in sys.path:
+    sys.path.insert(0, SCRIPT_DIR)
+CLO_EXPORT_OBJ_FILE = os.path.join(SCRIPT_DIR, "utils", "clo_export_obj.py")
+try:
+    clo_export_obj_spec = importlib.util.spec_from_file_location(
+        "clo_export_obj_pipeline",
+        CLO_EXPORT_OBJ_FILE,
+    )
+    if clo_export_obj_spec is None or clo_export_obj_spec.loader is None:
+        raise RuntimeError(f"Could not load module spec: {CLO_EXPORT_OBJ_FILE}")
+    clo_export_obj_module = importlib.util.module_from_spec(clo_export_obj_spec)
+    clo_export_obj_spec.loader.exec_module(clo_export_obj_module)
+    export_clo_obj = clo_export_obj_module.export_obj
+    make_clo_obj_option = clo_export_obj_module.make_basic_option
+    CLO_EXPORT_OBJ_IMPORT_ERROR = None
+except Exception as e:
+    export_clo_obj = None
+    make_clo_obj_option = None
+    CLO_EXPORT_OBJ_IMPORT_ERROR = e
 BASE_ZPRJ_PATH = ""
 GARMENT_INPUTS = []
 
@@ -62,9 +79,8 @@ GARMENT_INPUTS = []
 # 각 하위 폴더에 .zfab과 material.json이 있다고 가정
 FABRIC_SAMPLE_ROOT = os.path.join(SCRIPT_DIR, "bending_zfab_samples")
 
-# simulation/render 결과 저장 위치
+# simulation/export 결과 저장 위치
 OUT_DIR = os.path.join(SCRIPT_DIR, "clo_obj_dataset")
-MANUAL_OBJ_DIR = os.path.join(SCRIPT_DIR, "03_manual_obj_exports")
 GS_DIR = os.path.join(SCRIPT_DIR, "05_3dgs")
 SAMPLE_DIR_TEMPLATE = "{index:03d}_{fabric_stem}"
 DRAPED_ZPRJ_FILE_NAME = "draped_garment.zprj"
@@ -89,27 +105,14 @@ STOP_ON_FIRST_FAILURE = True
 SKIP_RENDER = True
 
 # Simulation 후 garment OBJ bundle(.obj, .mtl, textures)을 export.
-EXPORT_OBJ = False
+EXPORT_OBJ = True
 OBJ_FILE_NAME = "obj.obj"
 OBJ_EXPORT_FUNCTION_NAMES = [
-    "ExportOBJ",
     "ExportOBJW",
 ]
-OBJ_EXPORT_ALLOW_DIALOG = False
-OBJ_EXPORT_AUTO_ACCEPT_DIALOG = True
-OBJ_EXPORT_DIALOG_TIMEOUT_SEC = 20.0
-OBJ_EXPORT_TRY_NULL_OPTION = True
-OBJ_EXPORT_USE_IMPORT_EXPORT_OPTION = True
 OBJ_EXPORT_INCLUDE_GARMENT = True
 OBJ_EXPORT_INCLUDE_AVATAR = False
-OBJ_EXPORT_SET_SCALE_IN_OPTION = False
-OBJ_EXPORT_SCALE = 1.0
-OBJ_EXPORT_SCALE_PERCENT = 100.0
-OBJ_POST_EXPORT_SCALE = 0.01
-OBJ_NORMALIZE_UV_TO_0_1 = True
-OBJ_UV_PADDING = 0.0
-OBJ_UV_PRESERVE_ASPECT = True
-OBJ_USE_ZFAB_TEXTURES = True
+OBJ_EXPORT_SCALE = 0.01
 CLO_VERSION = "2026.0.312"
 EXPECT_BENDING_BIAS_PATCH = False
 EXPECTED_BENDING_BIAS_FIELDS = []
@@ -335,20 +338,15 @@ def parse_args(argv):
 
 
 def apply_config(config, args):
-    global BASE_ZPRJ_PATH, GARMENT_INPUTS, FABRIC_SAMPLE_ROOT, OUT_DIR, MANUAL_OBJ_DIR, GS_DIR
+    global BASE_ZPRJ_PATH, GARMENT_INPUTS, FABRIC_SAMPLE_ROOT, OUT_DIR, GS_DIR
     global SAMPLE_DIR_TEMPLATE, DRAPED_ZPRJ_FILE_NAME, SAMPLE_SUMMARY_FILE_NAME
     global DATASET_SUMMARY_JSON
     global NUM_VIEWS, IMAGE_WIDTH, IMAGE_HEIGHT, START_INDEX
     global SIM_STEPS, SAVE_SIM_ZPRJ, MAX_SAMPLES, STOP_ON_FIRST_FAILURE
     global SKIP_RENDER, EXPORT_OBJ
-    global OBJ_FILE_NAME, OBJ_EXPORT_FUNCTION_NAMES, OBJ_EXPORT_ALLOW_DIALOG
-    global OBJ_EXPORT_AUTO_ACCEPT_DIALOG, OBJ_EXPORT_DIALOG_TIMEOUT_SEC
-    global OBJ_EXPORT_TRY_NULL_OPTION
-    global OBJ_EXPORT_USE_IMPORT_EXPORT_OPTION, OBJ_EXPORT_INCLUDE_GARMENT
-    global OBJ_EXPORT_INCLUDE_AVATAR, OBJ_EXPORT_SCALE, OBJ_EXPORT_SCALE_PERCENT
-    global OBJ_EXPORT_SET_SCALE_IN_OPTION, OBJ_POST_EXPORT_SCALE
-    global OBJ_NORMALIZE_UV_TO_0_1, OBJ_UV_PADDING, OBJ_UV_PRESERVE_ASPECT
-    global OBJ_USE_ZFAB_TEXTURES
+    global OBJ_FILE_NAME, OBJ_EXPORT_FUNCTION_NAMES
+    global OBJ_EXPORT_INCLUDE_GARMENT, OBJ_EXPORT_INCLUDE_AVATAR
+    global OBJ_EXPORT_SCALE
     global CLO_VERSION
     global EXPECT_BENDING_BIAS_PATCH, EXPECTED_BENDING_BIAS_FIELDS
 
@@ -390,12 +388,6 @@ def apply_config(config, args):
         or (os.path.join(output_root, deep_get(config, ["naming", "draped_dir"], "02_draped_garments")) if output_root else "")
         or (os.path.join(output_root, "clo_obj_dataset") if output_root else "")
         or OUT_DIR
-    )
-    MANUAL_OBJ_DIR = (
-        deep_get(config, ["stage_3_manual_obj_export", "outputs", "manual_obj_dir"])
-        or deep_get(config, ["manual_obj_export", "output_dir"])
-        or (os.path.join(output_root, deep_get(config, ["naming", "manual_obj_dir"], "03_manual_obj_exports")) if output_root else "")
-        or MANUAL_OBJ_DIR
     )
     GS_DIR = (
         deep_get(config, ["stage_5_3dgs_training", "outputs", "gs_dir"])
@@ -478,59 +470,27 @@ def apply_config(config, args):
             deep_get(config, ["clo_simulation", "export_obj"], deep_get(config, ["clo", "export_obj"], EXPORT_OBJ)),
         )
     )
-    OBJ_FILE_NAME = str(deep_get(config, ["clo", "obj_file_name"], OBJ_FILE_NAME))
-    OBJ_EXPORT_FUNCTION_NAMES = list(
-        deep_get(config, ["clo", "obj_export_function_names"], OBJ_EXPORT_FUNCTION_NAMES)
-    )
-    OBJ_EXPORT_ALLOW_DIALOG = bool(
-        deep_get(config, ["clo", "obj_export_allow_dialog"], OBJ_EXPORT_ALLOW_DIALOG)
-    )
-    OBJ_EXPORT_AUTO_ACCEPT_DIALOG = bool(
-        deep_get(config, ["clo", "obj_export_auto_accept_dialog"], OBJ_EXPORT_AUTO_ACCEPT_DIALOG)
-    )
-    OBJ_EXPORT_DIALOG_TIMEOUT_SEC = float(
-        deep_get(config, ["clo", "obj_export_dialog_timeout_sec"], OBJ_EXPORT_DIALOG_TIMEOUT_SEC)
-    )
-    OBJ_EXPORT_TRY_NULL_OPTION = bool(
-        deep_get(config, ["clo", "obj_export_try_null_option"], OBJ_EXPORT_TRY_NULL_OPTION)
-    )
-    OBJ_EXPORT_USE_IMPORT_EXPORT_OPTION = bool(
+    OBJ_FILE_NAME = str(
         deep_get(
             config,
-            ["clo", "obj_export_use_import_export_option"],
-            OBJ_EXPORT_USE_IMPORT_EXPORT_OPTION,
+            ["naming", "obj_file"],
+            deep_get(config, ["clo", "obj_file_name"], OBJ_FILE_NAME),
         )
     )
+    configured_obj_export_functions = list(
+        deep_get(config, ["clo", "obj_export_function_names"], OBJ_EXPORT_FUNCTION_NAMES)
+    )
+    OBJ_EXPORT_FUNCTION_NAMES = [
+        name for name in configured_obj_export_functions
+        if str(name).strip() == "ExportOBJW"
+    ] or ["ExportOBJW"]
     OBJ_EXPORT_INCLUDE_GARMENT = bool(
         deep_get(config, ["clo", "obj_export_include_garment"], OBJ_EXPORT_INCLUDE_GARMENT)
     )
     OBJ_EXPORT_INCLUDE_AVATAR = bool(
         deep_get(config, ["clo", "obj_export_include_avatar"], OBJ_EXPORT_INCLUDE_AVATAR)
     )
-    OBJ_EXPORT_SET_SCALE_IN_OPTION = bool(
-        deep_get(
-            config,
-            ["clo", "obj_export_set_scale_in_option"],
-            OBJ_EXPORT_SET_SCALE_IN_OPTION,
-        )
-    )
     OBJ_EXPORT_SCALE = float(deep_get(config, ["clo", "obj_export_scale"], OBJ_EXPORT_SCALE))
-    OBJ_EXPORT_SCALE_PERCENT = float(
-        deep_get(config, ["clo", "obj_export_scale_percent"], OBJ_EXPORT_SCALE_PERCENT)
-    )
-    OBJ_POST_EXPORT_SCALE = float(
-        deep_get(config, ["clo", "obj_post_export_scale"], OBJ_POST_EXPORT_SCALE)
-    )
-    OBJ_NORMALIZE_UV_TO_0_1 = bool(
-        deep_get(config, ["clo", "obj_normalize_uv_to_0_1"], OBJ_NORMALIZE_UV_TO_0_1)
-    )
-    OBJ_UV_PADDING = float(deep_get(config, ["clo", "obj_uv_padding"], OBJ_UV_PADDING))
-    OBJ_UV_PRESERVE_ASPECT = bool(
-        deep_get(config, ["clo", "obj_uv_preserve_aspect"], OBJ_UV_PRESERVE_ASPECT)
-    )
-    OBJ_USE_ZFAB_TEXTURES = bool(
-        deep_get(config, ["clo", "obj_use_zfab_textures"], OBJ_USE_ZFAB_TEXTURES)
-    )
     CLO_VERSION = str(deep_get(config, ["clo", "clo_version"], CLO_VERSION))
     EXPECT_BENDING_BIAS_PATCH = bool(
         deep_get(
@@ -1082,174 +1042,6 @@ def api_module_symbol_details():
     return details
 
 
-def find_import_export_option_class():
-    modules = [export_api, import_api, utility_api]
-    for module_name in ["CLOAPIInterface", "Marvelous", "marvelous"]:
-        try:
-            modules.append(__import__(module_name))
-        except Exception:
-            pass
-    modules.extend(list(sys.modules.values()))
-
-    class_names = [
-        "ImportExportOption",
-        "ImportExportOptions",
-        "CLOImportExportOption",
-    ]
-    seen = set()
-    for module in modules:
-        if module is None:
-            continue
-        module_id = id(module)
-        if module_id in seen:
-            continue
-        seen.add(module_id)
-        for class_name in class_names:
-            cls = getattr(module, class_name, None)
-            if callable(cls):
-                return cls
-        try:
-            names = [name for name in dir(module) if not name.startswith("__")]
-        except Exception:
-            continue
-        for name in names:
-            lower_name = name.lower()
-            if "import" not in lower_name or "export" not in lower_name or "option" not in lower_name:
-                continue
-            cls = getattr(module, name, None)
-            if callable(cls):
-                return cls
-    return None
-
-
-def try_set_option_value(option, names, value, option_log):
-    for name in names:
-        try:
-            setattr(option, name, value)
-            option_log["set"].append({"name": name, "value": value})
-        except Exception as e:
-            option_log["failed"].append({"name": name, "value": value, "error": repr(e)})
-
-
-def make_obj_export_option():
-    cls = find_import_export_option_class()
-    option_log = {
-        "class": repr(cls),
-        "dir": [],
-        "set": [],
-        "failed": [],
-        "requested": {
-            "clo_version": CLO_VERSION,
-            "include_garment": OBJ_EXPORT_INCLUDE_GARMENT,
-            "include_avatar": OBJ_EXPORT_INCLUDE_AVATAR,
-            "set_scale_in_option": OBJ_EXPORT_SET_SCALE_IN_OPTION,
-            "scale": OBJ_EXPORT_SCALE,
-            "scale_percent": OBJ_EXPORT_SCALE_PERCENT,
-            "post_export_scale": OBJ_POST_EXPORT_SCALE,
-            "normalize_uv_to_0_1": OBJ_NORMALIZE_UV_TO_0_1,
-            "uv_padding": OBJ_UV_PADDING,
-            "uv_preserve_aspect": OBJ_UV_PRESERVE_ASPECT,
-            "use_zfab_textures": OBJ_USE_ZFAB_TEXTURES,
-            "allow_dialog": OBJ_EXPORT_ALLOW_DIALOG,
-            "auto_accept_dialog": OBJ_EXPORT_AUTO_ACCEPT_DIALOG,
-            "dialog_timeout_sec": OBJ_EXPORT_DIALOG_TIMEOUT_SEC,
-            "try_null_option": OBJ_EXPORT_TRY_NULL_OPTION,
-        },
-    }
-    if cls is None:
-        option_log["error"] = "ImportExportOption class was not found."
-        return None, option_log
-
-    try:
-        option = cls()
-    except Exception as e:
-        option_log["error"] = f"ImportExportOption constructor failed: {repr(e)}"
-        return None, option_log
-
-    try:
-        option_log["dir"] = [name for name in dir(option) if not name.startswith("__")]
-    except Exception:
-        pass
-
-    try_set_option_value(option, [
-        "bExportGarment",
-        "exportGarment",
-        "ExportGarment",
-        "bGarment",
-        "garment",
-        "includeGarment",
-        "bIncludeGarment",
-        "bSaveGarment",
-        "m_bExportGarment",
-    ], OBJ_EXPORT_INCLUDE_GARMENT, option_log)
-
-    try_set_option_value(option, [
-        "bExportAvatar",
-        "exportAvatar",
-        "ExportAvatar",
-        "bAvatar",
-        "avatar",
-        "includeAvatar",
-        "bIncludeAvatar",
-        "bSaveAvatar",
-        "bExportAvatarMesh",
-        "m_bExportAvatar",
-    ], OBJ_EXPORT_INCLUDE_AVATAR, option_log)
-
-    try_set_option_value(option, [
-        "bShowDialog",
-        "showDialog",
-        "bUseDialog",
-        "useDialog",
-        "bWithDialog",
-        "withDialog",
-        "dialog",
-        "m_bShowDialog",
-    ], OBJ_EXPORT_ALLOW_DIALOG, option_log)
-
-    if OBJ_EXPORT_SET_SCALE_IN_OPTION:
-        try_set_option_value(option, [
-            "scale",
-            "Scale",
-            "fScale",
-            "dScale",
-            "objScale",
-            "fObjScale",
-            "exportScale",
-            "fExportScale",
-            "m_fScale",
-            "m_dScale",
-        ], OBJ_EXPORT_SCALE, option_log)
-
-        try_set_option_value(option, [
-            "scalePercent",
-            "ScalePercent",
-            "fScalePercent",
-            "dScalePercent",
-            "size",
-            "Size",
-            "sizePercent",
-            "SizePercent",
-            "fSizePercent",
-            "dSizePercent",
-            "exportSize",
-            "fExportSize",
-            "m_fScalePercent",
-        ], OBJ_EXPORT_SCALE_PERCENT, option_log)
-
-    try_set_option_value(option, [
-        "bExportTexture",
-        "exportTexture",
-        "bTexture",
-        "texture",
-        "bSaveTexture",
-        "saveTexture",
-        "bCreateTextureFolder",
-    ], True, option_log)
-
-    return option, option_log
-
-
 def resolve_texture_path(ref, base_dir):
     ref = ref.strip().strip('"').strip("'")
     if not ref:
@@ -1358,632 +1150,80 @@ def collect_obj_bundle(out_sample_dir, preferred_obj_path=None):
     }
 
 
-def is_image_entry(name):
-    lower = name.lower()
-    return lower.endswith((".png", ".jpg", ".jpeg", ".tif", ".tiff"))
-
-
-def rank_zfab_texture_entry(entry_name, role):
-    if not is_image_entry(entry_name):
-        return None
-
-    name = os.path.basename(entry_name).lower()
-    if role == "diffuse":
-        reject_tokens = ["normal", "nrm", "rough", "disp", "metal", "mtl", "opacity", "alpha"]
-        if any(token in name for token in reject_tokens):
-            return None
-        token_groups = [
-            ["base_rgb"],
-            ["basecolor", "base_color", "base color"],
-            ["diffuse", "albedo"],
-            ["rgb"],
-            ["base"],
-        ]
-    elif role == "normal":
-        reject_tokens = ["rough", "disp", "metal", "mtl", "opacity", "alpha"]
-        if any(token in name for token in reject_tokens):
-            return None
-        token_groups = [
-            ["normal"],
-            ["nrm"],
-        ]
-    else:
-        return None
-
-    for group_idx, tokens in enumerate(token_groups):
-        for token in tokens:
-            if token in name:
-                return (group_idx, len(name), name)
-    return None
-
-
-def find_zfab_texture_entry(entries, role):
-    candidates = []
-    for entry in entries:
-        rank = rank_zfab_texture_entry(entry.filename, role)
-        if rank is not None:
-            candidates.append((rank, entry))
-    if not candidates:
-        return None
-    candidates.sort(key=lambda item: item[0])
-    return candidates[0][1]
-
-
-def extract_zfab_texture_entry(zfab_file, entry, out_sample_dir, dst_base_name):
-    if entry is None:
-        return None
-    ext = os.path.splitext(entry.filename)[1].lower() or ".png"
-    dst_path = os.path.join(out_sample_dir, dst_base_name + ext)
-    with zfab_file.open(entry, "r") as src, open(dst_path, "wb") as dst:
-        shutil.copyfileobj(src, dst)
-    return os.path.abspath(dst_path)
-
-
-def mtl_texture_ref(texture_path, mtl_dir):
-    ref = os.path.relpath(texture_path, mtl_dir)
-    return ref.replace(os.sep, "/")
-
-
-def rewrite_mtl_texture_paths(mtl_path, diffuse_path=None, normal_path=None):
-    if not mtl_path or not os.path.exists(mtl_path):
-        return {
-            "updated": False,
-            "reason": "mtl not found",
-        }
-
-    mtl_dir = os.path.dirname(mtl_path)
-    tmp_path = mtl_path + ".texture_tmp"
-    updates = []
-
-    with open(mtl_path, "r", encoding="utf-8-sig", errors="ignore") as src, open(
-        tmp_path, "w", encoding="utf-8", newline=""
-    ) as dst:
-        for raw_line in src:
-            stripped = raw_line.rstrip("\n\r")
-            newline = raw_line[len(stripped):]
-            parts = stripped.split()
-            if parts:
-                key = parts[0].lower()
-                if diffuse_path and key in ("map_ka", "map_kd", "map_basecolor", "map_albedo"):
-                    ref = mtl_texture_ref(diffuse_path, mtl_dir)
-                    dst.write(f"{parts[0]} {ref}{newline or os.linesep}")
-                    updates.append({"key": parts[0], "path": diffuse_path})
-                    continue
-                if normal_path and key in ("map_bump", "bump", "map_normal", "norm", "map_norm"):
-                    ref = mtl_texture_ref(normal_path, mtl_dir)
-                    dst.write(f"{parts[0]} {ref}{newline or os.linesep}")
-                    updates.append({"key": parts[0], "path": normal_path})
-                    continue
-            dst.write(raw_line)
-
-    os.replace(tmp_path, mtl_path)
-    return {
-        "updated": bool(updates),
-        "updates": updates,
-    }
-
-
-def replace_obj_bundle_textures_from_zfab(bundle, zfab_path, out_sample_dir):
-    log = {
-        "enabled": bool(OBJ_USE_ZFAB_TEXTURES),
-        "zfab_path": zfab_path,
-        "diffuse_entry": None,
-        "normal_entry": None,
-        "extracted_diffuse_path": None,
-        "extracted_normal_path": None,
-        "mtl_rewrite": None,
-    }
-    if not OBJ_USE_ZFAB_TEXTURES:
-        log["reason"] = "disabled"
-        return log
-    if not zfab_path or not os.path.exists(zfab_path):
-        log["reason"] = "zfab not found"
-        return log
-    if not zipfile.is_zipfile(zfab_path):
-        log["reason"] = "zfab is not a zip file"
-        return log
-
-    with zipfile.ZipFile(zfab_path, "r") as zfab_file:
-        entries = zfab_file.infolist()
-        diffuse_entry = find_zfab_texture_entry(entries, "diffuse")
-        normal_entry = find_zfab_texture_entry(entries, "normal")
-        log["diffuse_entry"] = diffuse_entry.filename if diffuse_entry else None
-        log["normal_entry"] = normal_entry.filename if normal_entry else None
-
-        diffuse_path = extract_zfab_texture_entry(
-            zfab_file, diffuse_entry, out_sample_dir, "fabric_diffuse"
-        )
-        normal_path = extract_zfab_texture_entry(
-            zfab_file, normal_entry, out_sample_dir, "fabric_normal"
-        )
-
-    log["extracted_diffuse_path"] = diffuse_path
-    log["extracted_normal_path"] = normal_path
-
-    if diffuse_path:
-        bundle["diffuse_path"] = diffuse_path
-    if normal_path:
-        bundle["normal_path"] = normal_path
-
-    if bundle.get("mtl_path"):
-        log["mtl_rewrite"] = rewrite_mtl_texture_paths(
-            bundle.get("mtl_path"),
-            diffuse_path,
-            normal_path,
-        )
-
-    for path in (diffuse_path, normal_path):
-        if path and path not in bundle["files"]:
-            bundle["files"].append(path)
-
-    return log
-
-
-def get_window_text(hwnd):
-    if os.name != "nt":
-        return ""
-    user32 = ctypes.windll.user32
-    length = user32.GetWindowTextLengthW(hwnd)
-    if length <= 0:
-        return ""
-    buffer = ctypes.create_unicode_buffer(length + 1)
-    user32.GetWindowTextW(hwnd, buffer, length + 1)
-    return buffer.value
-
-
-def get_window_class_name(hwnd):
-    if os.name != "nt":
-        return ""
-    user32 = ctypes.windll.user32
-    buffer = ctypes.create_unicode_buffer(256)
-    user32.GetClassNameW(hwnd, buffer, 256)
-    return buffer.value
-
-
-def get_window_pid(hwnd):
-    if os.name != "nt":
-        return 0
-    user32 = ctypes.windll.user32
-    window_pid = ctypes.wintypes.DWORD()
-    user32.GetWindowThreadProcessId(hwnd, ctypes.byref(window_pid))
-    return int(window_pid.value)
-
-
-def enum_child_window_texts(hwnd):
-    if os.name != "nt":
-        return []
-
-    user32 = ctypes.windll.user32
-    texts = []
-
-    enum_proc_type = ctypes.WINFUNCTYPE(
-        ctypes.wintypes.BOOL,
-        ctypes.wintypes.HWND,
-        ctypes.wintypes.LPARAM,
-    )
-
-    def callback(child_hwnd, lparam):
-        text = get_window_text(child_hwnd)
-        class_name = get_window_class_name(child_hwnd)
-        if text or class_name:
-            texts.append((child_hwnd, text, class_name))
-        return True
-
-    user32.EnumChildWindows(hwnd, enum_proc_type(callback), 0)
-    return texts
-
-
-def get_dialog_control_id(hwnd):
-    if os.name != "nt":
-        return 0
+def make_clo_obj_option_compatible(option_kwargs):
     try:
-        return int(ctypes.windll.user32.GetDlgCtrlID(hwnd))
+        signature = inspect.signature(make_clo_obj_option)
+        parameters = signature.parameters
+        accepts_kwargs = any(
+            parameter.kind == inspect.Parameter.VAR_KEYWORD
+            for parameter in parameters.values()
+        )
+        if accepts_kwargs:
+            filtered_kwargs = dict(option_kwargs)
+        else:
+            filtered_kwargs = {
+                key: value
+                for key, value in option_kwargs.items()
+                if key in parameters
+            }
     except Exception:
-        return 0
-
-
-def is_ok_button_text(text):
-    value = (text or "").strip().lower().replace("&", "")
-    return value == "ok"
-
-
-def is_ok_button(hwnd, text, class_name):
-    if (class_name or "").lower() != "button":
-        return False
-    return is_ok_button_text(text) or get_dialog_control_id(hwnd) == 1
-
-
-def is_likely_obj_export_dialog(hwnd, current_pid, foreground_hwnd):
-    if os.name != "nt":
-        return False
-
-    user32 = ctypes.windll.user32
-    if not user32.IsWindowVisible(hwnd):
-        return False
-
-    title = get_window_text(hwnd)
-    class_name = get_window_class_name(hwnd)
-    pid = get_window_pid(hwnd)
-    child_texts = enum_child_window_texts(hwnd)
-    text_blob = " ".join([title, class_name] + [text for _, text, _ in child_texts])
-    lower_blob = text_blob.lower()
-
-    ok_children = [
-        child_hwnd
-        for child_hwnd, text, child_class in child_texts
-        if is_ok_button(child_hwnd, text, child_class)
-    ]
-    has_ok = len(ok_children) > 0
-
-    export_tokens = [
-        "obj",
-        "export",
-        "save",
-        "option",
-        "options",
-        "garment",
-        "avatar",
-        "texture",
-        "scale",
-    ]
-    has_export_hint = any(token in lower_blob for token in export_tokens)
-    same_process = current_pid > 0 and pid == current_pid
-    is_dialog_class = class_name == "#32770"
-    is_foreground_dialog = foreground_hwnd and int(hwnd) == int(foreground_hwnd) and is_dialog_class
-
-    return has_ok and (
-        has_export_hint
-        or (same_process and is_dialog_class)
-        or is_foreground_dialog
-    )
-
-
-def find_obj_export_dialog_windows():
-    if os.name != "nt":
-        return []
-
-    user32 = ctypes.windll.user32
-    kernel32 = ctypes.windll.kernel32
-    current_pid = kernel32.GetCurrentProcessId()
-    foreground_hwnd = user32.GetForegroundWindow()
-    windows = []
-
-    enum_proc_type = ctypes.WINFUNCTYPE(
-        ctypes.wintypes.BOOL,
-        ctypes.wintypes.HWND,
-        ctypes.wintypes.LPARAM,
-    )
-
-    def callback(hwnd, lparam):
-        if is_likely_obj_export_dialog(hwnd, current_pid, foreground_hwnd):
-            title = get_window_text(hwnd)
-            class_name = get_window_class_name(hwnd)
-            windows.append((hwnd, title, class_name))
-        return True
-
-    user32.EnumWindows(enum_proc_type(callback), 0)
-    return windows
-
-
-def post_ok_to_window(hwnd):
-    if os.name != "nt":
-        return
-    user32 = ctypes.windll.user32
-    wm_command = 0x0111
-    wm_keydown = 0x0100
-    wm_keyup = 0x0101
-    bm_click = 0x00F5
-    id_ok = 1
-    vk_return = 0x0D
-    try:
-        user32.SetForegroundWindow(hwnd)
-    except Exception:
-        pass
-    for child_hwnd, text, class_name in enum_child_window_texts(hwnd):
-        if is_ok_button(child_hwnd, text, class_name):
-            try:
-                user32.SendMessageW(child_hwnd, bm_click, 0, 0)
-            except Exception:
-                pass
-    user32.PostMessageW(hwnd, wm_command, id_ok, 0)
-    user32.PostMessageW(hwnd, wm_keydown, vk_return, 0)
-    user32.PostMessageW(hwnd, wm_keyup, vk_return, 0)
-
-
-def start_obj_export_dialog_auto_accept(signature_name):
-    log = {
-        "enabled": bool(OBJ_EXPORT_AUTO_ACCEPT_DIALOG),
-        "signature": signature_name,
-        "timeout_sec": OBJ_EXPORT_DIALOG_TIMEOUT_SEC,
-        "windows": [],
-    }
-    if not OBJ_EXPORT_AUTO_ACCEPT_DIALOG or os.name != "nt":
-        return None, log
-
-    stop_event = threading.Event()
-
-    def worker():
-        deadline = time.time() + OBJ_EXPORT_DIALOG_TIMEOUT_SEC
-        while not stop_event.is_set() and time.time() < deadline:
-            for hwnd, title, class_name in find_obj_export_dialog_windows():
-                record = {
-                    "title": title,
-                    "class_name": class_name,
-                    "hwnd": int(hwnd),
-                    "time": time.strftime("%Y-%m-%d %H:%M:%S"),
-                }
-                log["windows"].append(record)
-                post_ok_to_window(hwnd)
-            time.sleep(0.2)
-        log["finished_at"] = time.strftime("%Y-%m-%d %H:%M:%S")
-
-    thread = threading.Thread(target=worker, name="clo_obj_export_dialog_auto_accept")
-    thread.daemon = True
-    thread.start()
-    return (stop_event, thread), log
-
-
-def make_dialog_export_call(func, out_obj_path, signature_name):
-    def call():
-        worker_state, dialog_log = start_obj_export_dialog_auto_accept(signature_name)
-        call.dialog_log = dialog_log
-        try:
-            return func(out_obj_path)
-        finally:
-            if worker_state is not None:
-                stop_event, thread = worker_state
-                stop_event.set()
-                thread.join(1.0)
-    call.dialog_log = {}
-    return call
-
-
-def call_obj_export(func, out_obj_path, option):
-    # CLO 2026 exposes ExportOBJ(path, ImportExportOption). The bare
-    # ExportOBJ(path) overload opens the OBJ export dialog, so it is disabled
-    # unless OBJ_EXPORT_ALLOW_DIALOG is explicitly enabled.
-    candidates = []
-    if OBJ_EXPORT_USE_IMPORT_EXPORT_OPTION and option is not None:
-        candidates.extend([
-            ("path_import_export_option", lambda: func(out_obj_path, option)),
-        ])
-    if OBJ_EXPORT_USE_IMPORT_EXPORT_OPTION and option is None and OBJ_EXPORT_TRY_NULL_OPTION:
-        candidates.extend([
-            ("path_null_import_export_option", lambda: func(out_obj_path, None)),
-        ])
-    if OBJ_EXPORT_ALLOW_DIALOG or OBJ_EXPORT_AUTO_ACCEPT_DIALOG:
-        signature_name = "path_dialog_auto_accept" if OBJ_EXPORT_AUTO_ACCEPT_DIALOG else "path_dialog_allowed"
-        candidates.append((signature_name, make_dialog_export_call(func, out_obj_path, signature_name)))
-    return candidates
-
-
-def scale_obj_vertices(obj_path, scale):
-    if not obj_path or not os.path.exists(obj_path):
-        return None
-    if scale == 1.0:
-        return {
-            "applied": False,
-            "scale": scale,
-            "reason": "scale is 1.0",
+        filtered_kwargs = {
+            key: option_kwargs[key]
+            for key in ("export_garment", "export_avatar", "single_object", "include_hidden", "scale", "save_in_zip")
+            if key in option_kwargs
         }
 
-    tmp_path = obj_path + ".scaled_tmp"
-    vertex_count = 0
-    with open(obj_path, "r", encoding="utf-8-sig", errors="ignore") as src, open(
-        tmp_path, "w", encoding="utf-8", newline=""
-    ) as dst:
-        for line in src:
-            if line.startswith("v "):
-                parts = line.rstrip("\n\r").split()
-                if len(parts) >= 4:
-                    try:
-                        x = float(parts[1]) * scale
-                        y = float(parts[2]) * scale
-                        z = float(parts[3]) * scale
-                        rest = " ".join(parts[4:])
-                        suffix = f" {rest}" if rest else ""
-                        dst.write(f"v {x:.9f} {y:.9f} {z:.9f}{suffix}\n")
-                        vertex_count += 1
-                        continue
-                    except Exception:
-                        pass
-            dst.write(line)
-
-    os.replace(tmp_path, obj_path)
-    return {
-        "applied": True,
-        "scale": scale,
-        "vertex_count": vertex_count,
-    }
-
-
-def normalize_obj_uv_coordinates(obj_path, enabled=True, padding=0.0, preserve_aspect=True):
-    if not enabled:
-        return {
-            "applied": False,
-            "reason": "disabled",
-        }
-    if not obj_path or not os.path.exists(obj_path):
-        return None
-
-    padding = max(0.0, min(float(padding), 0.49))
-    uv_values = []
-    with open(obj_path, "r", encoding="utf-8-sig", errors="ignore") as f:
-        lines = f.readlines()
-
-    for line in lines:
-        if not line.startswith("vt "):
-            continue
-        parts = line.strip().split()
-        if len(parts) < 3:
-            continue
-        try:
-            uv_values.append((float(parts[1]), float(parts[2])))
-        except Exception:
-            pass
-
-    if not uv_values:
-        return {
-            "applied": False,
-            "reason": "no vt coordinates",
-        }
-
-    min_u = min(u for u, _ in uv_values)
-    max_u = max(u for u, _ in uv_values)
-    min_v = min(v for _, v in uv_values)
-    max_v = max(v for _, v in uv_values)
-    span_u = max_u - min_u
-    span_v = max_v - min_v
-    available = 1.0 - (padding * 2.0)
-
-    if span_u <= 0.0 and span_v <= 0.0:
-        return {
-            "applied": False,
-            "reason": "degenerate uv bounds",
-            "before": {
-                "min_u": min_u,
-                "max_u": max_u,
-                "min_v": min_v,
-                "max_v": max_v,
-            },
-        }
-
-    if preserve_aspect:
-        max_span = max(span_u, span_v)
-        scale_u = available / max_span if max_span > 0.0 else 1.0
-        scale_v = scale_u
-        used_u = span_u * scale_u
-        used_v = span_v * scale_v
-        offset_u = padding + ((available - used_u) * 0.5) - (min_u * scale_u)
-        offset_v = padding + ((available - used_v) * 0.5) - (min_v * scale_v)
-    else:
-        scale_u = available / span_u if span_u > 0.0 else 1.0
-        scale_v = available / span_v if span_v > 0.0 else 1.0
-        offset_u = padding - (min_u * scale_u)
-        offset_v = padding - (min_v * scale_v)
-
-    tmp_path = obj_path + ".uv_tmp"
-    vt_count = 0
-    after_min_u = None
-    after_max_u = None
-    after_min_v = None
-    after_max_v = None
-
-    with open(tmp_path, "w", encoding="utf-8", newline="") as dst:
-        for line in lines:
-            if line.startswith("vt "):
-                stripped = line.rstrip("\n\r")
-                newline = line[len(stripped):]
-                parts = stripped.split()
-                if len(parts) >= 3:
-                    try:
-                        u = (float(parts[1]) * scale_u) + offset_u
-                        v = (float(parts[2]) * scale_v) + offset_v
-                        rest = " ".join(parts[3:])
-                        suffix = f" {rest}" if rest else ""
-                        dst.write(f"vt {u:.9f} {v:.9f}{suffix}{newline or os.linesep}")
-                        vt_count += 1
-                        after_min_u = u if after_min_u is None else min(after_min_u, u)
-                        after_max_u = u if after_max_u is None else max(after_max_u, u)
-                        after_min_v = v if after_min_v is None else min(after_min_v, v)
-                        after_max_v = v if after_max_v is None else max(after_max_v, v)
-                        continue
-                    except Exception:
-                        pass
-            dst.write(line)
-
-    os.replace(tmp_path, obj_path)
-    return {
-        "applied": True,
-        "padding": padding,
-        "preserve_aspect": bool(preserve_aspect),
-        "vt_count": vt_count,
-        "before": {
-            "min_u": min_u,
-            "max_u": max_u,
-            "min_v": min_v,
-            "max_v": max_v,
-            "span_u": span_u,
-            "span_v": span_v,
-        },
-        "after": {
-            "min_u": after_min_u,
-            "max_u": after_max_u,
-            "min_v": after_min_v,
-            "max_v": after_max_v,
-        },
-        "scale_u": scale_u,
-        "scale_v": scale_v,
-        "offset_u": offset_u,
-        "offset_v": offset_v,
-    }
+    return make_clo_obj_option(**filtered_kwargs)
 
 
 def export_obj_bundle(out_sample_dir, zfab_path=None):
     os.makedirs(out_sample_dir, exist_ok=True)
     out_obj_path = os.path.abspath(os.path.join(out_sample_dir, OBJ_FILE_NAME))
-    attempts = []
-    option, option_log = make_obj_export_option()
+    if export_clo_obj is None or make_clo_obj_option is None:
+        raise RuntimeError(f"Failed to import utils.clo_export_obj: {repr(CLO_EXPORT_OBJ_IMPORT_ERROR)}")
 
-    for func_name in OBJ_EXPORT_FUNCTION_NAMES:
-        func = getattr(export_api, func_name, None)
-        if not callable(func):
-            attempts.append({
-                "function": func_name,
-                "status": "missing",
-            })
-            continue
+    option_kwargs = {
+        "export_garment": OBJ_EXPORT_INCLUDE_GARMENT,
+        "export_avatar": OBJ_EXPORT_INCLUDE_AVATAR,
+        "export_light": False,
+        "export_fabric": True,
+        "single_object": True,
+        "include_hidden": False,
+        "scale": OBJ_EXPORT_SCALE,
+        "save_in_zip": False,
+        "show_dialog": False,
+    }
+    option, option_log = make_clo_obj_option_compatible(option_kwargs)
+    option_log["requested"] = {
+        "clo_version": CLO_VERSION,
+        "function_candidates": OBJ_EXPORT_FUNCTION_NAMES,
+        "include_garment": OBJ_EXPORT_INCLUDE_GARMENT,
+        "include_avatar": OBJ_EXPORT_INCLUDE_AVATAR,
+        "scale": OBJ_EXPORT_SCALE,
+        "export_fabric": True,
+        "show_dialog": False,
+    }
 
-        for signature_name, call in call_obj_export(func, out_obj_path, option):
-            try:
-                result = call()
-                bundle = collect_obj_bundle(out_sample_dir, out_obj_path)
-                attempts.append({
-                    "function": func_name,
-                    "signature": signature_name,
-                    "status": "called",
-                    "result": str(result),
-                    "obj_exists": bool(bundle["obj_path"]),
-                    "dialog_auto_accept": getattr(call, "dialog_log", {}),
-                })
-                if bundle["obj_path"]:
-                    zfab_texture_log = replace_obj_bundle_textures_from_zfab(
-                        bundle,
-                        zfab_path,
-                        out_sample_dir,
-                    )
-                    uv_result = normalize_obj_uv_coordinates(
-                        bundle["obj_path"],
-                        OBJ_NORMALIZE_UV_TO_0_1,
-                        OBJ_UV_PADDING,
-                        OBJ_UV_PRESERVE_ASPECT,
-                    )
-                    scale_result = scale_obj_vertices(bundle["obj_path"], OBJ_POST_EXPORT_SCALE)
-                    success_option_log = option_log
-                    if signature_name == "path_dialog_auto_accept":
-                        success_option_log = {
-                            "used": False,
-                            "fallback": "ExportOBJ(path) with automatic dialog accept",
-                        }
-                    bundle.update({
-                        "export_function": func_name,
-                        "export_signature": signature_name,
-                        "raw_result": str(result),
-                        "import_export_option": success_option_log,
-                        "dialog_auto_accept": getattr(call, "dialog_log", {}),
-                        "zfab_textures": zfab_texture_log,
-                        "post_export_uv": uv_result,
-                        "post_export_scale": scale_result,
-                    })
-                    return bundle
-            except Exception as e:
-                attempts.append({
-                    "function": func_name,
-                    "signature": signature_name,
-                    "status": "failed",
-                    "error": repr(e),
-                    "dialog_auto_accept": getattr(call, "dialog_log", {}),
-                })
+    export_result = export_clo_obj(
+        out_obj_path,
+        function_names=OBJ_EXPORT_FUNCTION_NAMES,
+        option=option,
+        export_api_module=export_api,
+        collect_callback=lambda: collect_obj_bundle(out_sample_dir, out_obj_path),
+    )
+    attempts = export_result["attempts"]
+
+    if export_result["ok"]:
+        bundle = export_result["bundle"]
+        success_option_log = option_log
+        bundle.update({
+            "export_function": export_result["function"],
+            "export_signature": export_result["signature"],
+            "raw_result": str(export_result["result"]),
+            "import_export_option": success_option_log,
+            "post_processing": "none",
+        })
+        return bundle
 
     error_record = {
         "requested_obj_path": out_obj_path,
@@ -1992,9 +1232,7 @@ def export_obj_bundle(out_sample_dir, zfab_path=None):
         "available_export_api_functions": export_api_function_names(),
         "available_export_api_function_details": export_api_function_details(),
         "api_module_symbol_details": api_module_symbol_details(),
-        "allow_dialog": OBJ_EXPORT_ALLOW_DIALOG,
-        "auto_accept_dialog": OBJ_EXPORT_AUTO_ACCEPT_DIALOG,
-        "try_null_option": OBJ_EXPORT_TRY_NULL_OPTION,
+        "dialog_fallback_enabled": False,
     }
     write_json(os.path.join(out_sample_dir, "obj_export_error.json"), error_record)
     raise RuntimeError(
@@ -2157,7 +1395,6 @@ def main(argv=None):
     ensure_clo_api()
 
     os.makedirs(OUT_DIR, exist_ok=True)
-    os.makedirs(MANUAL_OBJ_DIR, exist_ok=True)
     os.makedirs(GS_DIR, exist_ok=True)
 
     if not GARMENT_INPUTS:
@@ -2201,7 +1438,6 @@ def main(argv=None):
         "out_dir": OUT_DIR,
         "output_files": {
             "draped_dir": OUT_DIR,
-            "manual_obj_dir": MANUAL_OBJ_DIR,
             "gs_dir": GS_DIR,
             "dataset_summary_json": dataset_summary_path,
         },
@@ -2224,21 +1460,11 @@ def main(argv=None):
             "enabled": EXPORT_OBJ,
             "file_name": OBJ_FILE_NAME,
             "function_candidates": OBJ_EXPORT_FUNCTION_NAMES,
-            "allow_dialog": OBJ_EXPORT_ALLOW_DIALOG,
-            "auto_accept_dialog": OBJ_EXPORT_AUTO_ACCEPT_DIALOG,
-            "dialog_timeout_sec": OBJ_EXPORT_DIALOG_TIMEOUT_SEC,
-            "try_null_option": OBJ_EXPORT_TRY_NULL_OPTION,
-            "use_import_export_option": OBJ_EXPORT_USE_IMPORT_EXPORT_OPTION,
             "include_garment": OBJ_EXPORT_INCLUDE_GARMENT,
             "include_avatar": OBJ_EXPORT_INCLUDE_AVATAR,
-            "set_scale_in_option": OBJ_EXPORT_SET_SCALE_IN_OPTION,
             "scale": OBJ_EXPORT_SCALE,
-            "scale_percent": OBJ_EXPORT_SCALE_PERCENT,
-            "post_export_scale": OBJ_POST_EXPORT_SCALE,
-            "normalize_uv_to_0_1": OBJ_NORMALIZE_UV_TO_0_1,
-            "uv_padding": OBJ_UV_PADDING,
-            "uv_preserve_aspect": OBJ_UV_PRESERVE_ASPECT,
-            "use_zfab_textures": OBJ_USE_ZFAB_TEXTURES,
+            "export_fabric": True,
+            "post_processing": "none",
             "clo_version": CLO_VERSION,
         },
         "samples": []
@@ -2263,13 +1489,11 @@ def main(argv=None):
             sample_id=safe_sample_name,
         )
         out_sample_dir = os.path.join(OUT_DIR, out_sample_dir_name)
-        manual_obj_sample_dir = os.path.join(MANUAL_OBJ_DIR, out_sample_dir_name)
         gs_sample_dir = os.path.join(GS_DIR, out_sample_dir_name)
         out_image_dir = os.path.join(out_sample_dir, "images")
         sample_summary_path = os.path.join(out_sample_dir, SAMPLE_SUMMARY_FILE_NAME)
         planned_draped_zprj_path = os.path.join(out_sample_dir, DRAPED_ZPRJ_FILE_NAME)
         os.makedirs(out_sample_dir, exist_ok=True)
-        os.makedirs(manual_obj_sample_dir, exist_ok=True)
         os.makedirs(gs_sample_dir, exist_ok=True)
 
         print("=" * 80)
@@ -2282,7 +1506,7 @@ def main(argv=None):
         print(f"  source sample : {variant['source_sample_dir']}")
         print(f"  zfab          : {zfab_path}")
         print(f"  output        : {out_sample_dir}")
-        print(f"  manual obj    : {manual_obj_sample_dir}")
+        print(f"  obj output    : {out_sample_dir}")
         print(f"  3dgs          : {gs_sample_dir}")
 
         sample_record = {
@@ -2298,7 +1522,7 @@ def main(argv=None):
             "output_dir": out_sample_dir,
             "output_files": {
                 "draped_zprj": planned_draped_zprj_path,
-                "manual_obj_dir": manual_obj_sample_dir,
+                "obj_dir": out_sample_dir,
                 "gs_dir": gs_sample_dir,
                 "sample_summary_json": sample_summary_path,
                 "material_json": None,
@@ -2370,7 +1594,7 @@ def main(argv=None):
                 "label_4d": material_data.get("label_4d") if material_data else None,
                 "output_files": {
                     "draped_zprj": sim_zprj_path,
-                    "manual_obj_dir": manual_obj_sample_dir,
+                    "obj_dir": out_sample_dir,
                     "gs_dir": gs_sample_dir,
                     "sample_summary_json": sample_summary_path,
                     "material_json": material_dst,

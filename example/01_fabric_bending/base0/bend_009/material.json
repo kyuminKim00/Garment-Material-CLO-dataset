@@ -1,20 +1,20 @@
 {
-  "sample_id": "base0__bend_001",
+  "sample_id": "base0__bend_009",
   "fabric_id": "base0",
-  "bend_id": "bend_001",
+  "bend_id": "bend_009",
   "fabric_index": 0,
-  "bend_index": 1,
+  "bend_index": 9,
   "source_zfab": "C:\\Users\\CGnA\\Desktop\\CLO\\example\\input\\fabrics\\base0.zfab",
-  "output_zfab": "C:\\Users\\CGnA\\Desktop\\CLO\\example\\01_fabric_bending\\base0/bend_001\\fabric.zfab",
+  "output_zfab": "C:\\Users\\CGnA\\Desktop\\CLO\\example\\01_fabric_bending\\base0/bend_009\\fabric.zfab",
   "ui": {
-    "bending_warp": 16.8884,
-    "bending_weft": 16.8884,
-    "bending_bias": 16.8884
+    "bending_warp": 100.0,
+    "bending_weft": 100.0,
+    "bending_bias": 100.0
   },
   "actual": {
-    "bending_warp": 444.42,
-    "bending_weft": 444.42,
-    "bending_bias": 444.42
+    "bending_warp": 2000000.0,
+    "bending_weft": 2000000.0,
+    "bending_bias": 2000000.0
   },
   "rule_text": [
     "0~10: +10",
@@ -49,7 +49,7 @@
   },
   "patch_result": {
     "input_zfab": "C:\\Users\\CGnA\\Desktop\\CLO\\example\\input\\fabrics\\base0.zfab",
-    "output_zfab": "C:\\Users\\CGnA\\Desktop\\CLO\\example\\01_fabric_bending\\base0/bend_001\\fabric.zfab",
+    "output_zfab": "C:\\Users\\CGnA\\Desktop\\CLO\\example\\01_fabric_bending\\base0/bend_009\\fabric.zfab",
     "fab_files": [
       "V2_Cut_Sew_Knit_Fleece_3.fab"
     ],
@@ -186,75 +186,75 @@
           "fBLeftShearK": [
             {
               "value_offset": 35142,
-              "value_float_le": 444.4200134277344,
-              "raw_hex": "c335de43"
+              "value_float_le": 2000000.0,
+              "raw_hex": "0024f449"
             },
             {
               "value_offset": 35740,
-              "value_float_le": 444.4200134277344,
-              "raw_hex": "c335de43"
+              "value_float_le": 2000000.0,
+              "raw_hex": "0024f449"
             }
           ],
           "fBLeftShearK_v2": [
             {
               "value_offset": 35336,
-              "value_float_le": 444.4200134277344,
-              "raw_hex": "c335de43"
+              "value_float_le": 2000000.0,
+              "raw_hex": "0024f449"
             },
             {
               "value_offset": 35956,
-              "value_float_le": 444.4200134277344,
-              "raw_hex": "c335de43"
+              "value_float_le": 2000000.0,
+              "raw_hex": "0024f449"
             }
           ],
           "fBRightShearK": [],
           "fBRightShearK_v2": [
             {
               "value_offset": 35317,
-              "value_float_le": 444.4200134277344,
-              "raw_hex": "c335de43"
+              "value_float_le": 2000000.0,
+              "raw_hex": "0024f449"
             },
             {
               "value_offset": 35909,
-              "value_float_le": 444.4200134277344,
-              "raw_hex": "c335de43"
+              "value_float_le": 2000000.0,
+              "raw_hex": "0024f449"
             }
           ],
           "fBhK": [
             {
               "value_offset": 35275,
-              "value_float_le": 444.4200134277344,
-              "raw_hex": "c335de43"
+              "value_float_le": 2000000.0,
+              "raw_hex": "0024f449"
             },
             {
               "value_offset": 35878,
-              "value_float_le": 444.4200134277344,
-              "raw_hex": "c335de43"
+              "value_float_le": 2000000.0,
+              "raw_hex": "0024f449"
             }
           ],
           "fBhK_v2": [],
           "fBuK": [
             {
               "value_offset": 35259,
-              "value_float_le": 444.4200134277344,
-              "raw_hex": "c335de43"
+              "value_float_le": 2000000.0,
+              "raw_hex": "0024f449"
             },
             {
               "value_offset": 35870,
-              "value_float_le": 444.4200134277344,
-              "raw_hex": "c335de43"
+              "value_float_le": 2000000.0,
+              "raw_hex": "0024f449"
             }
           ],
           "fBuK_v2": [
             {
               "value_offset": 35286,
-              "value_float_le": 444.4200134277344,
-              "raw_hex": "c335de43"
+              "value_float_le": 2000000.0,
+              "raw_hex": "0024f449"
             },
             {
               "value_offset": 35889,
-              "value_float_le": 444.4200134277344,
-              "raw_hex": "c335de43"
+              "value_float_le": 2000000.0,
+              "raw_hex": "0024f449"
             }
           ],
           "fBucklingStiffnessU": [
@@ -284,25 +284,25 @@
           "fBvK": [
             {
               "value_offset": 34635,
-              "value_float_le": 444.4200134277344,
-              "raw_hex": "c335de43"
+              "value_float_le": 2000000.0,
+              "raw_hex": "0024f449"
             },
             {
               "value_offset": 35267,
-              "value_float_le": 444.4200134277344,
-              "raw_hex": "c335de43"
+              "value_float_le": 2000000.0,
+              "raw_hex": "0024f449"
             }
           ],
           "fBvK_v2": [
             {
               "value_offset": 35297,
-              "value_float_le": 444.4200134277344,
-              "raw_hex": "c335de43"
+              "value_float_le": 2000000.0,
+              "raw_hex": "0024f449"
             },
             {
               "value_offset": 35531,
-              "value_float_le": 444.4200134277344,
-              "raw_hex": "c335de43"
+              "value_float_le": 2000000.0,
+              "raw_hex": "0024f449"
             }
           ]
         },
@@ -313,144 +313,144 @@
             "field": "fBuK",
             "value_offset": 35259,
             "old_value": 4248.22119140625,
-            "new_value": 444.4200134277344,
+            "new_value": 2000000.0,
             "old_hex": "c5c18445",
-            "new_hex": "c335de43"
+            "new_hex": "0024f449"
           },
           {
             "role": "warp",
             "field": "fBuK",
             "value_offset": 35870,
             "old_value": 4248.22119140625,
-            "new_value": 444.4200134277344,
+            "new_value": 2000000.0,
             "old_hex": "c5c18445",
-            "new_hex": "c335de43"
+            "new_hex": "0024f449"
           },
           {
             "role": "warp",
             "field": "fBuK_v2",
             "value_offset": 35286,
             "old_value": 13346.1806640625,
-            "new_value": 444.4200134277344,
+            "new_value": 2000000.0,
             "old_hex": "b9885046",
-            "new_hex": "c335de43"
+            "new_hex": "0024f449"
           },
           {
             "role": "warp",
             "field": "fBuK_v2",
             "value_offset": 35889,
             "old_value": 13346.1806640625,
-            "new_value": 444.4200134277344,
+            "new_value": 2000000.0,
             "old_hex": "b9885046",
-            "new_hex": "c335de43"
+            "new_hex": "0024f449"
           },
           {
             "role": "weft",
             "field": "fBvK",
             "value_offset": 34635,
             "old_value": 8497.4150390625,
-            "new_value": 444.4200134277344,
+            "new_value": 2000000.0,
             "old_hex": "a9c50446",
-            "new_hex": "c335de43"
+            "new_hex": "0024f449"
           },
           {
             "role": "weft",
             "field": "fBvK",
             "value_offset": 35267,
             "old_value": 8497.4150390625,
-            "new_value": 444.4200134277344,
+            "new_value": 2000000.0,
             "old_hex": "a9c50446",
-            "new_hex": "c335de43"
+            "new_hex": "0024f449"
           },
           {
             "role": "weft",
             "field": "fBvK_v2",
             "value_offset": 35297,
             "old_value": 26695.416015625,
-            "new_value": 444.4200134277344,
+            "new_value": 2000000.0,
             "old_hex": "d58ed046",
-            "new_hex": "c335de43"
+            "new_hex": "0024f449"
           },
           {
             "role": "weft",
             "field": "fBvK_v2",
             "value_offset": 35531,
             "old_value": 26695.416015625,
-            "new_value": 444.4200134277344,
+            "new_value": 2000000.0,
             "old_hex": "d58ed046",
-            "new_hex": "c335de43"
+            "new_hex": "0024f449"
           },
           {
             "role": "bias",
             "field": "fBhK",
             "value_offset": 35275,
             "old_value": 3279.649658203125,
-            "new_value": 444.4200134277344,
+            "new_value": 2000000.0,
             "old_hex": "65fa4c45",
-            "new_hex": "c335de43"
+            "new_hex": "0024f449"
           },
           {
             "role": "bias",
             "field": "fBhK",
             "value_offset": 35878,
             "old_value": 3279.649658203125,
-            "new_value": 444.4200134277344,
+            "new_value": 2000000.0,
             "old_hex": "65fa4c45",
-            "new_hex": "c335de43"
+            "new_hex": "0024f449"
           },
           {
             "role": "bias",
             "field": "fBLeftShearK",
             "value_offset": 35142,
             "old_value": 3279.649658203125,
-            "new_value": 444.4200134277344,
+            "new_value": 2000000.0,
             "old_hex": "65fa4c45",
-            "new_hex": "c335de43"
+            "new_hex": "0024f449"
           },
           {
             "role": "bias",
             "field": "fBLeftShearK",
             "value_offset": 35740,
             "old_value": 3279.649658203125,
-            "new_value": 444.4200134277344,
+            "new_value": 2000000.0,
             "old_hex": "65fa4c45",
-            "new_hex": "c335de43"
+            "new_hex": "0024f449"
           },
           {
             "role": "bias",
             "field": "fBLeftShearK_v2",
             "value_offset": 35336,
             "old_value": 10303.3232421875,
-            "new_value": 444.4200134277344,
+            "new_value": 2000000.0,
             "old_hex": "4bfd2046",
-            "new_hex": "c335de43"
+            "new_hex": "0024f449"
           },
           {
             "role": "bias",
             "field": "fBLeftShearK_v2",
             "value_offset": 35956,
             "old_value": 10303.3232421875,
-            "new_value": 444.4200134277344,
+            "new_value": 2000000.0,
             "old_hex": "4bfd2046",
-            "new_hex": "c335de43"
+            "new_hex": "0024f449"
           },
           {
             "role": "bias",
             "field": "fBRightShearK_v2",
             "value_offset": 35317,
             "old_value": 10303.3232421875,
-            "new_value": 444.4200134277344,
+            "new_value": 2000000.0,
             "old_hex": "4bfd2046",
-            "new_hex": "c335de43"
+            "new_hex": "0024f449"
           },
           {
             "role": "bias",
             "field": "fBRightShearK_v2",
             "value_offset": 35909,
             "old_value": 10303.3232421875,
-            "new_value": 444.4200134277344,
+            "new_value": 2000000.0,
             "old_hex": "4bfd2046",
-            "new_hex": "c335de43"
+            "new_hex": "0024f449"
           }
         ]
       }
