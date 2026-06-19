@@ -1,8 +1,60 @@
 {
-  "input_zfab": "C:\\Users\\CGnA\\Desktop\\CLO\\example\\base.zfab",
+  "fabric_inputs": [
+    {
+      "fabric_id": "base0",
+      "zfab": "C:\\Users\\CGnA\\Desktop\\CLO\\example\\input\\fabrics\\base0.zfab",
+      "metadata": {
+        "source": "fabrics_dir"
+      }
+    },
+    {
+      "fabric_id": "base1",
+      "zfab": "C:\\Users\\CGnA\\Desktop\\CLO\\example\\input\\fabrics\\base1.zfab",
+      "metadata": {
+        "source": "fabrics_dir"
+      }
+    }
+  ],
   "out_dir": "C:\\Users\\CGnA\\Desktop\\CLO\\example\\01_fabric_bending",
-  "sample_count": 3,
+  "requested_sample_count": 2,
+  "bend_count_per_fabric": 2,
+  "sample_count": 4,
   "sample_mode": "paired",
+  "sample_distribution": "ui_bucket_jittered",
+  "sample_seed": 0,
+  "effective_ui_min": 55.0,
+  "effective_ui_curve": 1.0,
+  "sample_bins": [
+    {
+      "min": 0.0,
+      "max": 20.0,
+      "count": 1
+    },
+    {
+      "min": 20.0,
+      "max": 50.0,
+      "count": 2
+    },
+    {
+      "min": 50.0,
+      "max": 70.0,
+      "count": 2
+    },
+    {
+      "min": 70.0,
+      "max": 100.0,
+      "count": 3
+    }
+  ],
+  "sample_bin_allocations": [
+    0,
+    0,
+    0,
+    0
+  ],
+  "variant_dir_template": "{fabric_id}/{bend_id}",
+  "bend_dir_template": "bend_{index:03d}",
+  "preserve_bending_v2_ratio": true,
   "rule_text": [
     "0~10: +10",
     "10~27: +50",
@@ -23,51 +75,90 @@
     "fBvK_v2"
   ],
   "patch_buckling_stiffness": false,
-  "created_at": "2026-06-18 23:17:27",
+  "created_at": "2026-06-19 09:41:59",
   "samples": [
     {
-      "index": 0,
+      "sample_index": 0,
+      "fabric_index": 0,
+      "bend_index": 0,
+      "sample_id": "base0__bend_000",
+      "fabric_id": "base0",
+      "bend_id": "bend_000",
+      "source_zfab": "C:\\Users\\CGnA\\Desktop\\CLO\\example\\input\\fabrics\\base0.zfab",
       "ui_warp": 0.0,
       "ui_weft": 0.0,
       "actual_warp": 0.0,
       "actual_weft": 0.0,
-      "zfab": "C:\\Users\\CGnA\\Desktop\\CLO\\example\\01_fabric_bending\\base_000.zfab",
-      "json": "C:\\Users\\CGnA\\Desktop\\CLO\\example\\01_fabric_bending\\base_000.material.json",
+      "zfab": "C:\\Users\\CGnA\\Desktop\\CLO\\example\\01_fabric_bending\\base0/bend_000\\fabric.zfab",
+      "json": "C:\\Users\\CGnA\\Desktop\\CLO\\example\\01_fabric_bending\\base0/bend_000\\material.json",
       "output_files": {
-        "zfab": "C:\\Users\\CGnA\\Desktop\\CLO\\example\\01_fabric_bending\\base_000.zfab",
-        "material_json": "C:\\Users\\CGnA\\Desktop\\CLO\\example\\01_fabric_bending\\base_000.material.json"
+        "zfab": "C:\\Users\\CGnA\\Desktop\\CLO\\example\\01_fabric_bending\\base0/bend_000\\fabric.zfab",
+        "material_json": "C:\\Users\\CGnA\\Desktop\\CLO\\example\\01_fabric_bending\\base0/bend_000\\material.json"
       },
       "patched_count": 8,
       "clo_api_load": null
     },
     {
-      "index": 1,
-      "ui_warp": 50.0,
-      "ui_weft": 50.0,
-      "actual_warp": 3250.0,
-      "actual_weft": 3250.0,
-      "zfab": "C:\\Users\\CGnA\\Desktop\\CLO\\example\\01_fabric_bending\\base_001.zfab",
-      "json": "C:\\Users\\CGnA\\Desktop\\CLO\\example\\01_fabric_bending\\base_001.material.json",
-      "output_files": {
-        "zfab": "C:\\Users\\CGnA\\Desktop\\CLO\\example\\01_fabric_bending\\base_001.zfab",
-        "material_json": "C:\\Users\\CGnA\\Desktop\\CLO\\example\\01_fabric_bending\\base_001.material.json"
-      },
-      "patched_count": 8,
-      "clo_api_load": null
-    },
-    {
-      "index": 2,
+      "sample_index": 1,
+      "fabric_index": 0,
+      "bend_index": 1,
+      "sample_id": "base0__bend_001",
+      "fabric_id": "base0",
+      "bend_id": "bend_001",
+      "source_zfab": "C:\\Users\\CGnA\\Desktop\\CLO\\example\\input\\fabrics\\base0.zfab",
       "ui_warp": 100.0,
       "ui_weft": 100.0,
       "actual_warp": 2000000.0,
       "actual_weft": 2000000.0,
-      "zfab": "C:\\Users\\CGnA\\Desktop\\CLO\\example\\01_fabric_bending\\base_002.zfab",
-      "json": "C:\\Users\\CGnA\\Desktop\\CLO\\example\\01_fabric_bending\\base_002.material.json",
+      "zfab": "C:\\Users\\CGnA\\Desktop\\CLO\\example\\01_fabric_bending\\base0/bend_001\\fabric.zfab",
+      "json": "C:\\Users\\CGnA\\Desktop\\CLO\\example\\01_fabric_bending\\base0/bend_001\\material.json",
       "output_files": {
-        "zfab": "C:\\Users\\CGnA\\Desktop\\CLO\\example\\01_fabric_bending\\base_002.zfab",
-        "material_json": "C:\\Users\\CGnA\\Desktop\\CLO\\example\\01_fabric_bending\\base_002.material.json"
+        "zfab": "C:\\Users\\CGnA\\Desktop\\CLO\\example\\01_fabric_bending\\base0/bend_001\\fabric.zfab",
+        "material_json": "C:\\Users\\CGnA\\Desktop\\CLO\\example\\01_fabric_bending\\base0/bend_001\\material.json"
       },
       "patched_count": 8,
+      "clo_api_load": null
+    },
+    {
+      "sample_index": 2,
+      "fabric_index": 1,
+      "bend_index": 0,
+      "sample_id": "base1__bend_000",
+      "fabric_id": "base1",
+      "bend_id": "bend_000",
+      "source_zfab": "C:\\Users\\CGnA\\Desktop\\CLO\\example\\input\\fabrics\\base1.zfab",
+      "ui_warp": 0.0,
+      "ui_weft": 0.0,
+      "actual_warp": 0.0,
+      "actual_weft": 0.0,
+      "zfab": "C:\\Users\\CGnA\\Desktop\\CLO\\example\\01_fabric_bending\\base1/bend_000\\fabric.zfab",
+      "json": "C:\\Users\\CGnA\\Desktop\\CLO\\example\\01_fabric_bending\\base1/bend_000\\material.json",
+      "output_files": {
+        "zfab": "C:\\Users\\CGnA\\Desktop\\CLO\\example\\01_fabric_bending\\base1/bend_000\\fabric.zfab",
+        "material_json": "C:\\Users\\CGnA\\Desktop\\CLO\\example\\01_fabric_bending\\base1/bend_000\\material.json"
+      },
+      "patched_count": 6,
+      "clo_api_load": null
+    },
+    {
+      "sample_index": 3,
+      "fabric_index": 1,
+      "bend_index": 1,
+      "sample_id": "base1__bend_001",
+      "fabric_id": "base1",
+      "bend_id": "bend_001",
+      "source_zfab": "C:\\Users\\CGnA\\Desktop\\CLO\\example\\input\\fabrics\\base1.zfab",
+      "ui_warp": 100.0,
+      "ui_weft": 100.0,
+      "actual_warp": 2000000.0,
+      "actual_weft": 2000000.0,
+      "zfab": "C:\\Users\\CGnA\\Desktop\\CLO\\example\\01_fabric_bending\\base1/bend_001\\fabric.zfab",
+      "json": "C:\\Users\\CGnA\\Desktop\\CLO\\example\\01_fabric_bending\\base1/bend_001\\material.json",
+      "output_files": {
+        "zfab": "C:\\Users\\CGnA\\Desktop\\CLO\\example\\01_fabric_bending\\base1/bend_001\\fabric.zfab",
+        "material_json": "C:\\Users\\CGnA\\Desktop\\CLO\\example\\01_fabric_bending\\base1/bend_001\\material.json"
+      },
+      "patched_count": 6,
       "clo_api_load": null
     }
   ],

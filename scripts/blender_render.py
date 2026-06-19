@@ -11,7 +11,7 @@ import bpy
 from mathutils import Matrix, Vector
 
 
-CONFIG_JSON_PATH = Path("C:\Users\CGnA\Desktop\CLO\dataset_config.json")
+CONFIG_JSON_PATH = Path(r"C:\Users\CGnA\Desktop\CLO\dataset_config.json")
 
 
 def load_config(path):
@@ -951,18 +951,21 @@ def discover_render_targets(manual_obj_root, render_root, obj_file_name, diffuse
         raise FileNotFoundError(f"Manual OBJ root not found: {manual_obj_root}")
 
     targets = []
-    for sample_dir in sorted(path for path in manual_obj_root.iterdir() if path.is_dir()):
-        obj_path = sample_dir / obj_file_name
-        if not obj_path.exists():
-            continue
+    for obj_path in sorted(manual_obj_root.rglob(obj_file_name)):
+        sample_dir = obj_path.parent
+        rel_dir = sample_dir.relative_to(manual_obj_root)
+        sample_name = "__".join(rel_dir.parts)
+        if not sample_name:
+            sample_name = sample_dir.name
+        sample_index = sample_index_from_dir_name(rel_dir.parts[-1], len(targets)) if rel_dir.parts else len(targets)
         targets.append(
             {
-                "sample_index": sample_index_from_dir_name(sample_dir.name, len(targets)),
-                "sample_name": sample_dir.name,
+                "sample_index": sample_index,
+                "sample_name": sample_name,
                 "obj_path": str(obj_path),
                 "diffuse_path": str(sample_dir / diffuse_file_name),
                 "normal_path": str(sample_dir / normal_file_name),
-                "output_dir": str(render_root / sample_dir.name),
+                "output_dir": str(render_root / rel_dir),
             }
         )
 

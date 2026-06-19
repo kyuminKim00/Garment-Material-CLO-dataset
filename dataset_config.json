@@ -4,8 +4,9 @@
     "output_dir": "C:/Users/CGnA/Desktop/CLO/example"
   },
   "inputs": {
-    "base_fabric_zfab": "C:/Users/CGnA/Desktop/CLO/example/base.zfab",
-    "base_garment_zprj": "C:/Users/CGnA/Desktop/CLO/example/base_A_pose_dress.zprj"
+    "input_dir": "input",
+    "garments_dir": "input/garments",
+    "fabrics_dir": "input/fabrics"
   },
   "naming": {
     "fabric_dir": "01_fabric_bending",
@@ -13,9 +14,11 @@
     "manual_obj_dir": "03_manual_obj_exports",
     "render_dir": "04_blender_multiview",
     "gs_dir": "05_3dgs",
-    "fabric_file_template": "base_{index:03d}.zfab",
-    "material_json_template": "base_{index:03d}.material.json",
-    "sample_dir_template": "{index:03d}_{fabric_stem}",
+    "fabric_variant_dir_template": "{fabric_id}/{bend_id}",
+    "bend_dir_template": "bend_{index:03d}",
+    "fabric_file_template": "fabric.zfab",
+    "material_json_template": "material.json",
+    "sample_dir_template": "{garment_id}/{fabric_id}/{bend_id}",
     "draped_zprj_file": "draped_garment.zprj",
     "sample_summary_file": "summary.json",
     "manual_obj_file": "obj.obj",
@@ -26,6 +29,31 @@
   "fabric_sampler": {
     "sample_count": 10,
     "sample_mode": "paired",
+    "sample_distribution": "ui_bucket_jittered",
+    "sample_seed": 0,
+    "sample_bins": [
+      {
+        "min": 0.0,
+        "max": 20.0,
+        "count": 1
+      },
+      {
+        "min": 20.0,
+        "max": 50.0,
+        "count": 2
+      },
+      {
+        "min": 50.0,
+        "max": 70.0,
+        "count": 2
+      },
+      {
+        "min": 70.0,
+        "max": 100.0,
+        "count": 3
+      }
+    ],
+    "preserve_bending_v2_ratio": true,
     "load_samples_into_clo": false,
     "export_through_clo_after_load": false,
     "warp_fields": [

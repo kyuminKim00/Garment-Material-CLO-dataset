@@ -12,6 +12,7 @@ import struct
 import zipfile
 import argparse
 import glob
+import random
 from pathlib import Path
 from typing import Dict, List, Tuple, Any
 
@@ -30,6 +31,17 @@ OUT_DIR = os.path.join(SCRIPT_DIR, "bending_zfab_samples")
 
 SAMPLE_COUNT = 10
 SAMPLE_MODE = "paired"      # "paired" or "grid"
+SAMPLE_DISTRIBUTION = "ui_uniform"  # "ui_uniform", "effective_ui_jittered", or "ui_bucket_jittered"
+SAMPLE_SEED = 0
+EFFECTIVE_UI_MIN = 55.0
+EFFECTIVE_UI_CURVE = 1.0
+UI_SAMPLE_BINS = [
+    {"min": 0.0, "max": 20.0, "count": 1},
+    {"min": 20.0, "max": 50.0, "count": 2},
+    {"min": 50.0, "max": 70.0, "count": 2},
+    {"min": 70.0, "max": 100.0, "count": 3},
+]
+PRESERVE_BENDING_V2_RATIO = True
 
 # CLO API 사용 여부: CLO Python Editor 안에서 실행하면 True 권장
 LOAD_SAMPLES_INTO_CLO = True
@@ -97,7 +109,7 @@ def ui_to_actual(ui_value: float) -> float:
     return float(total)
 
 
-def make_ui_samples(n: int) -> List[float]:
+def make_ui_uniform_samples(n: int) -> List[float]:
     if n <= 1:
         return [0.0]
     vals = []
@@ -109,8 +121,158 @@ def make_ui_samples(n: int) -> List[float]:
     return vals
 
 
-def make_sample_pairs(n: int, mode: str) -> List[Tuple[float, float]]:
-    vals = make_ui_samples(n)
+def make_effective_ui_jittered_samples(
+    n: int,
+    seed: int = 0,
+    effective_min: float = 50.0,
+    curve: float = 0.75,
+) -> List[float]:
+    """
+    Sample UI values where bending differences are visually meaningful.
+
+    The endpoints 0 and 100 are kept as anchors. Interior samples are drawn
+    continuously inside stratified bins over [effective_min, 100], with a
+    curve < 1.0 putting a little more resolution near high stiffness.
+    This avoids repeatedly producing fixed class-like UI values.
+    """
+    if n <= 1:
+        return [0.0]
+    if n == 2:
+        return [0.0, 100.0]
+
+    effective_min = max(0.0, min(99.999, float(effective_min)))
+    curve = max(0.05, float(curve))
+    rng = random.Random(int(seed))
+    interior_count = n - 2
+    vals = [0.0]
+
+    for i in range(interior_count):
+        t = (i + rng.random()) / interior_count
+        shaped = t ** curve
+        vals.append(effective_min + (100.0 - effective_min) * shaped)
+
+    vals.append(100.0)
+    vals = sorted(round(v, 4) for v in vals)
+    vals[0] = 0.0
+    vals[-1] = 100.0
+    return vals
+
+
+def allocate_bucket_counts(bins: List[Dict[str, Any]], total_count: int, anchor_count: int) -> List[int]:
+    interior_count = max(0, int(total_count) - int(anchor_count))
+    if not bins:
+        return []
+
+    weights = [max(0.0, float(item.get("count", item.get("n", item.get("weight", 1.0))))) for item in bins]
+    if sum(weights) <= 0.0:
+        weights = [1.0 for _ in bins]
+
+    active_indexes = [i for i, weight in enumerate(weights) if weight > 0.0]
+    counts = [0 for _ in bins]
+    if interior_count >= len(active_indexes):
+        for i in active_indexes:
+            counts[i] = 1
+        interior_count -= len(active_indexes)
+
+    total_weight = sum(weights)
+    raw = [interior_count * weight / total_weight for weight in weights]
+    extra_counts = [int(math.floor(value)) for value in raw]
+    remaining = interior_count - sum(extra_counts)
+
+    order = sorted(range(len(raw)), key=lambda i: (raw[i] - extra_counts[i], weights[i]), reverse=True)
+    for i in order[:remaining]:
+        extra_counts[i] += 1
+    counts = [count + extra for count, extra in zip(counts, extra_counts)]
+    return counts
+
+
+def make_ui_bucket_jittered_samples(
+    bins: List[Dict[str, Any]],
+    seed: int = 0,
+    total_count: int = None,
+    include_min_anchor: bool = True,
+    include_max_anchor: bool = True,
+) -> List[float]:
+    """
+    Draw continuous random UI samples from configured UI ranges.
+
+    Each range is internally stratified before jittering so samples cover the
+    whole interval without collapsing into fixed class centers.
+    """
+    rng = random.Random(int(seed))
+    if total_count is not None and total_count <= 1:
+        return [0.0]
+
+    anchor_count = int(bool(include_min_anchor)) + int(bool(include_max_anchor))
+    bucket_counts = (
+        allocate_bucket_counts(bins or [], total_count, anchor_count)
+        if total_count is not None
+        else [int(item.get("count", item.get("n", 0))) for item in (bins or [])]
+    )
+
+    vals: List[float] = []
+    if include_min_anchor:
+        vals.append(0.0)
+
+    for item, count in zip(bins or [], bucket_counts):
+        lo = float(item.get("min", item.get("lo", 0.0)))
+        hi = float(item.get("max", item.get("hi", 100.0)))
+        if count <= 0:
+            continue
+        lo = max(0.0, min(100.0, lo))
+        hi = max(0.0, min(100.0, hi))
+        if hi < lo:
+            lo, hi = hi, lo
+        if hi == lo:
+            vals.extend([lo] * count)
+            continue
+
+        width = hi - lo
+        for i in range(count):
+            t = (i + rng.random()) / count
+            vals.append(lo + width * t)
+
+    if include_max_anchor:
+        vals.append(100.0)
+
+    # Keep exact anchors, but avoid duplicate random values landing exactly on them.
+    vals = [max(0.0, min(100.0, float(v))) for v in vals]
+    vals = sorted(round(v, 4) for v in vals)
+    if include_min_anchor:
+        vals[0] = 0.0
+    if include_max_anchor:
+        vals[-1] = 100.0
+    return vals
+
+
+def make_ui_samples(
+    n: int,
+    distribution: str = "ui_uniform",
+    seed: int = 0,
+    effective_min: float = 50.0,
+    curve: float = 0.75,
+    bins: List[Dict[str, Any]] = None,
+) -> List[float]:
+    dist = (distribution or "ui_uniform").lower()
+    if dist in ("ui_uniform", "uniform"):
+        return make_ui_uniform_samples(n)
+    if dist in ("effective_ui_jittered", "effective", "jittered"):
+        return make_effective_ui_jittered_samples(n, seed, effective_min, curve)
+    if dist in ("ui_bucket_jittered", "bucket_jittered", "bucket"):
+        return make_ui_bucket_jittered_samples(bins or UI_SAMPLE_BINS, seed, n)
+    raise ValueError('sample_distribution must be "ui_uniform", "effective_ui_jittered", or "ui_bucket_jittered"')
+
+
+def make_sample_pairs(
+    n: int,
+    mode: str,
+    distribution: str = "ui_uniform",
+    seed: int = 0,
+    effective_min: float = 50.0,
+    curve: float = 0.75,
+    bins: List[Dict[str, Any]] = None,
+) -> List[Tuple[float, float]]:
+    vals = make_ui_samples(n, distribution, seed, effective_min, curve, bins)
     if mode.lower() == "paired":
         return [(v, v) for v in vals]
     if mode.lower() == "grid":
@@ -174,14 +336,49 @@ def scan_fields_in_fab(data: bytes, field_names: List[str]) -> Dict[str, List[Di
     return result
 
 
-def patch_fab_bytes(data: bytes, warp_actual: float, weft_actual: float) -> Tuple[bytes, Dict[str, Any]]:
+def _first_field_value(data: bytes, field: str) -> Any:
+    offsets = find_exact_key_offsets(data, field)
+    if not offsets:
+        return None
+    return read_float_le(data, offsets[0])
+
+
+def _safe_ratio(numerator: Any, denominator: Any, default: float = 1.0) -> float:
+    try:
+        numerator = float(numerator)
+        denominator = float(denominator)
+        if abs(denominator) < 1.0e-12:
+            return default
+        ratio = numerator / denominator
+        if not math.isfinite(ratio) or ratio <= 0.0:
+            return default
+        return ratio
+    except Exception:
+        return default
+
+
+def patch_fab_bytes(
+    data: bytes,
+    warp_actual: float,
+    weft_actual: float,
+    preserve_bending_v2_ratio: bool = True,
+) -> Tuple[bytes, Dict[str, Any]]:
     buf = bytearray(data)
+
+    warp_v2_ratio = _safe_ratio(_first_field_value(data, "fBuK_v2"), _first_field_value(data, "fBuK"))
+    weft_v2_ratio = _safe_ratio(_first_field_value(data, "fBvK_v2"), _first_field_value(data, "fBvK"))
 
     patch_targets: List[Tuple[str, str, float]] = []
     for f in WARP_FIELDS:
-        patch_targets.append(("warp", f, warp_actual))
+        value = warp_actual
+        if preserve_bending_v2_ratio and f.endswith("_v2"):
+            value *= warp_v2_ratio
+        patch_targets.append(("warp", f, value))
     for f in WEFT_FIELDS:
-        patch_targets.append(("weft", f, weft_actual))
+        value = weft_actual
+        if preserve_bending_v2_ratio and f.endswith("_v2"):
+            value *= weft_v2_ratio
+        patch_targets.append(("weft", f, value))
 
     if PATCH_BUCKLING_STIFFNESS:
         for f in BUCKLING_WARP_FIELDS:
@@ -211,6 +408,11 @@ def patch_fab_bytes(data: bytes, warp_actual: float, weft_actual: float) -> Tupl
 
     info = {
         "patched_count": patched_count,
+        "preserve_bending_v2_ratio": preserve_bending_v2_ratio,
+        "bending_v2_ratios": {
+            "warp": warp_v2_ratio,
+            "weft": weft_v2_ratio,
+        },
         "patch_log": patch_log,
     }
     return bytes(buf), info
@@ -227,7 +429,13 @@ def copy_zipinfo(info: zipfile.ZipInfo) -> zipfile.ZipInfo:
     return zi
 
 
-def patch_zfab(input_zfab: str, output_zfab: str, warp_actual: float, weft_actual: float) -> Dict[str, Any]:
+def patch_zfab(
+    input_zfab: str,
+    output_zfab: str,
+    warp_actual: float,
+    weft_actual: float,
+    preserve_bending_v2_ratio: bool = True,
+) -> Dict[str, Any]:
     if not zipfile.is_zipfile(input_zfab):
         raise RuntimeError(f"Input is not a valid .zfab zip: {input_zfab}")
 
@@ -245,7 +453,7 @@ def patch_zfab(input_zfab: str, output_zfab: str, warp_actual: float, weft_actua
             if info.filename.lower().endswith(".fab"):
                 fab_files.append(info.filename)
                 before_scan = scan_fields_in_fab(data, sorted(set(WARP_FIELDS + WEFT_FIELDS + BUCKLING_WARP_FIELDS + BUCKLING_WEFT_FIELDS)))
-                out_data, patch_info = patch_fab_bytes(data, warp_actual, weft_actual)
+                out_data, patch_info = patch_fab_bytes(data, warp_actual, weft_actual, preserve_bending_v2_ratio)
                 after_scan = scan_fields_in_fab(out_data, sorted(set(WARP_FIELDS + WEFT_FIELDS + BUCKLING_WARP_FIELDS + BUCKLING_WEFT_FIELDS)))
                 total_patched += patch_info["patched_count"]
                 all_logs.append({
@@ -277,6 +485,7 @@ def patch_zfab(input_zfab: str, output_zfab: str, warp_actual: float, weft_actua
         "output_zfab": output_zfab,
         "fab_files": fab_files,
         "total_patched": total_patched,
+        "preserve_bending_v2_ratio": preserve_bending_v2_ratio,
         "logs": all_logs,
     }
 
@@ -346,6 +555,13 @@ def safe_name(v: float) -> str:
     return (f"{v:06.2f}").replace(".", "p")
 
 
+def safe_id(value: Any, fallback: str = "item") -> str:
+    text = str(value or fallback).strip()
+    text = re.sub(r"[^A-Za-z0-9_.-]+", "_", text)
+    text = text.strip("._-")
+    return text or fallback
+
+
 def format_stage_file_name(template: str, **values: Any) -> str:
     try:
         return template.format(**values)
@@ -375,6 +591,15 @@ def load_config(path: str) -> Dict[str, Any]:
         return json.load(f)
 
 
+def resolve_config_path(path: Any, output_root: str = "") -> str:
+    if path is None or str(path).strip() == "":
+        return ""
+    resolved = os.path.expanduser(str(path))
+    if not os.path.isabs(resolved) and output_root:
+        resolved = os.path.join(output_root, resolved)
+    return os.path.abspath(resolved)
+
+
 def find_input_file(root_dir: str, extension: str, label: str) -> str:
     if not root_dir:
         return ""
@@ -401,6 +626,95 @@ def find_input_file(root_dir: str, extension: str, label: str) -> str:
     return os.path.abspath(sorted(candidates, key=rank)[0])
 
 
+def discover_input_files(root_dir: str, extension: str) -> List[str]:
+    if not root_dir or not os.path.exists(root_dir):
+        return []
+    ext = extension.lstrip(".").lower()
+    found: List[str] = []
+    for dirpath, _, filenames in os.walk(root_dir):
+        matches = sorted(
+            os.path.join(dirpath, name)
+            for name in filenames
+            if name.lower().endswith("." + ext)
+        )
+        found.extend(matches)
+    return [os.path.abspath(path) for path in sorted(found)]
+
+
+def discover_fabric_inputs(config: Dict[str, Any], output_root: str, explicit_input_zfab: str) -> List[Dict[str, Any]]:
+    entries = (
+        deep_get(config, ["inputs", "fabrics"])
+        or deep_get(config, ["stage_1_fabric_sampler", "inputs", "fabrics"])
+        or []
+    )
+    fabrics: List[Dict[str, Any]] = []
+
+    if isinstance(entries, list):
+        for idx, entry in enumerate(entries):
+            if isinstance(entry, str):
+                path = entry
+                fabric_id = safe_id(os.path.splitext(os.path.basename(path))[0], f"fabric_{idx:03d}")
+                metadata = {}
+            elif isinstance(entry, dict):
+                path = entry.get("zfab") or entry.get("path") or entry.get("base_zfab") or ""
+                fabric_id = safe_id(entry.get("id") or entry.get("name") or os.path.splitext(os.path.basename(path))[0], f"fabric_{idx:03d}")
+                metadata = {k: v for k, v in entry.items() if k not in ("zfab", "path", "base_zfab")}
+            else:
+                continue
+            if path:
+                fabrics.append({
+                    "fabric_id": fabric_id,
+                    "zfab": resolve_config_path(path, output_root),
+                    "metadata": metadata,
+                })
+
+    input_dir = (
+        deep_get(config, ["inputs", "input_dir"])
+        or deep_get(config, ["stage_1_fabric_sampler", "inputs", "input_dir"])
+        or "input"
+    )
+    input_dir = resolve_config_path(input_dir, output_root)
+    fabrics_dir = (
+        deep_get(config, ["inputs", "fabrics_dir"])
+        or deep_get(config, ["stage_1_fabric_sampler", "inputs", "fabrics_dir"])
+        or os.path.join(input_dir, "fabrics")
+    )
+    if fabrics_dir:
+        fabrics_dir = resolve_config_path(fabrics_dir, output_root)
+        for path in discover_input_files(fabrics_dir, "zfab"):
+            rel_parent = os.path.relpath(os.path.dirname(path), fabrics_dir)
+            stem = os.path.splitext(os.path.basename(path))[0]
+            fabric_id_source = stem if rel_parent == "." else rel_parent.replace(os.sep, "_")
+            fabric_id = safe_id(fabric_id_source, f"fabric_{len(fabrics):03d}")
+            fabrics.append({"fabric_id": fabric_id, "zfab": path, "metadata": {"source": "fabrics_dir"}})
+
+    fallback_zfab = (
+        explicit_input_zfab
+        or deep_get(config, ["inputs", "base_fabric_zfab"])
+        or deep_get(config, ["stage_1_fabric_sampler", "inputs", "base_zfab"])
+        or deep_get(config, ["sampler", "input_zfab"])
+        or deep_get(config, ["paths", "base_zfab"])
+        or find_input_file(output_root, "zfab", "base zfab")
+        or INPUT_ZFAB
+    )
+    if fallback_zfab and not fabrics:
+        fabrics.append({
+            "fabric_id": "fabric_000",
+            "zfab": resolve_config_path(fallback_zfab, output_root),
+            "metadata": {"source": "legacy_base_fabric_zfab"},
+        })
+
+    deduped: List[Dict[str, Any]] = []
+    seen = set()
+    for item in fabrics:
+        key = os.path.normcase(os.path.abspath(item["zfab"]))
+        if key in seen:
+            continue
+        seen.add(key)
+        deduped.append(item)
+    return deduped
+
+
 def parse_args(argv: List[str]) -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Create bending-varied .zfab samples.")
     parser.add_argument("input_zfab", nargs="?", help="Base .zfab path.")
@@ -408,6 +722,28 @@ def parse_args(argv: List[str]) -> argparse.Namespace:
     parser.add_argument("--config", default="", help="Pipeline JSON config path.")
     parser.add_argument("--sample_count", type=int, default=None, help="Number of UI samples.")
     parser.add_argument("--sample_mode", default="", choices=["", "paired", "grid"], help="Sampling mode.")
+    parser.add_argument(
+        "--sample_distribution",
+        default="",
+        choices=["", "ui_uniform", "effective_ui_jittered", "ui_bucket_jittered"],
+        help="How to choose UI bending values.",
+    )
+    parser.add_argument("--sample_seed", type=int, default=None, help="Random seed for jittered sampling.")
+    parser.add_argument("--effective_ui_min", type=float, default=None, help="Lower UI bound for effective jittered sampling.")
+    parser.add_argument("--effective_ui_curve", type=float, default=None, help="Power curve for effective jittered sampling; <1 biases high.")
+    parser.add_argument("--sample_bins_json", default="", help="JSON list of UI bins for ui_bucket_jittered sampling.")
+    parser.add_argument(
+        "--preserve_bending_v2_ratio",
+        action="store_true",
+        default=None,
+        help="Scale *_v2 bending fields by the base fB*_v2/fB* ratio.",
+    )
+    parser.add_argument(
+        "--no_preserve_bending_v2_ratio",
+        action="store_false",
+        dest="preserve_bending_v2_ratio",
+        help="Patch *_v2 bending fields to the same raw value as the primary fields.",
+    )
     args, _ = parser.parse_known_args(argv)
     return args
 
@@ -418,7 +754,7 @@ def main(argv: List[str] = None):
 
     args = parse_args(sys.argv[1:] if argv is None else argv)
     default_config = os.path.join(os.path.dirname(SCRIPT_FILE), "dataset_pipeline_config.json")
-    config_path = CONFIG_JSON_PATH or args.config or os.environ.get("CLO_DATASET_CONFIG", "")
+    config_path = args.config or os.environ.get("CLO_DATASET_CONFIG", "") or CONFIG_JSON_PATH
     if not config_path and os.path.exists(default_config):
         config_path = default_config
     config = load_config(config_path)
@@ -432,15 +768,7 @@ def main(argv: List[str] = None):
     )
     output_root = os.path.abspath(os.path.expanduser(output_root)) if output_root else ""
 
-    input_zfab = (
-        args.input_zfab
-        or deep_get(config, ["inputs", "base_fabric_zfab"])
-        or deep_get(config, ["stage_1_fabric_sampler", "inputs", "base_zfab"])
-        or deep_get(config, ["sampler", "input_zfab"])
-        or deep_get(config, ["paths", "base_zfab"])
-        or find_input_file(output_root, "zfab", "base zfab")
-        or INPUT_ZFAB
-    )
+    fabric_inputs = discover_fabric_inputs(config, output_root, args.input_zfab or "")
     out_dir = (
         args.out_dir
         or deep_get(config, ["stage_1_fabric_sampler", "outputs", "fabric_dir"])
@@ -452,6 +780,20 @@ def main(argv: List[str] = None):
     )
     debug_dir_config = deep_get(config, ["stage_1_fabric_sampler", "outputs", "debug_dir"], "")
     summary_path_config = deep_get(config, ["stage_1_fabric_sampler", "outputs", "summary_json"], "")
+    variant_dir_template = str(
+        deep_get(
+            config,
+            ["stage_1_fabric_sampler", "outputs", "variant_dir_template"],
+            deep_get(config, ["naming", "fabric_variant_dir_template"], ""),
+        )
+    )
+    bend_dir_template = str(
+        deep_get(
+            config,
+            ["stage_1_fabric_sampler", "outputs", "bend_dir_template"],
+            deep_get(config, ["naming", "bend_dir_template"], "bend_{index:03d}"),
+        )
+    )
     zfab_name_template = str(
         deep_get(
             config,
@@ -480,6 +822,62 @@ def main(argv: List[str] = None):
         config,
         ["stage_1_fabric_sampler", "settings", "sample_mode"],
         deep_get(config, ["fabric_sampler", "sample_mode"], deep_get(config, ["sampler", "sample_mode"], SAMPLE_MODE)),
+    )
+    sample_distribution = args.sample_distribution or deep_get(
+        config,
+        ["stage_1_fabric_sampler", "settings", "sample_distribution"],
+        deep_get(
+            config,
+            ["fabric_sampler", "sample_distribution"],
+            deep_get(config, ["sampler", "sample_distribution"], SAMPLE_DISTRIBUTION),
+        ),
+    )
+    sample_seed = int(
+        args.sample_seed
+        if args.sample_seed is not None
+        else deep_get(
+            config,
+            ["stage_1_fabric_sampler", "settings", "sample_seed"],
+            deep_get(config, ["fabric_sampler", "sample_seed"], deep_get(config, ["sampler", "sample_seed"], SAMPLE_SEED)),
+        )
+    )
+    effective_ui_min = float(
+        args.effective_ui_min
+        if args.effective_ui_min is not None
+        else deep_get(
+            config,
+            ["stage_1_fabric_sampler", "settings", "effective_ui_min"],
+            deep_get(config, ["fabric_sampler", "effective_ui_min"], deep_get(config, ["sampler", "effective_ui_min"], EFFECTIVE_UI_MIN)),
+        )
+    )
+    effective_ui_curve = float(
+        args.effective_ui_curve
+        if args.effective_ui_curve is not None
+        else deep_get(
+            config,
+            ["stage_1_fabric_sampler", "settings", "effective_ui_curve"],
+            deep_get(config, ["fabric_sampler", "effective_ui_curve"], deep_get(config, ["sampler", "effective_ui_curve"], EFFECTIVE_UI_CURVE)),
+        )
+    )
+    sample_bins = deep_get(
+        config,
+        ["stage_1_fabric_sampler", "settings", "sample_bins"],
+        deep_get(config, ["fabric_sampler", "sample_bins"], deep_get(config, ["sampler", "sample_bins"], UI_SAMPLE_BINS)),
+    )
+    if args.sample_bins_json:
+        sample_bins = json.loads(args.sample_bins_json)
+    preserve_bending_v2_ratio = bool(
+        args.preserve_bending_v2_ratio
+        if args.preserve_bending_v2_ratio is not None
+        else deep_get(
+            config,
+            ["stage_1_fabric_sampler", "settings", "preserve_bending_v2_ratio"],
+            deep_get(
+                config,
+                ["fabric_sampler", "preserve_bending_v2_ratio"],
+                deep_get(config, ["sampler", "preserve_bending_v2_ratio"], PRESERVE_BENDING_V2_RATIO),
+            ),
+        )
     )
     load_samples_into_clo = bool(
         deep_get(
@@ -536,24 +934,49 @@ def main(argv: List[str] = None):
         )
     )
 
-    if not input_zfab:
-        raise RuntimeError("input_zfab is empty. Set inputs.base_fabric_zfab in the config, or pass input_zfab.")
+    if not fabric_inputs:
+        raise RuntimeError("No fabric input found. Put .zfab files under output_dir/input/fabrics, set inputs.fabrics_dir, or pass input_zfab.")
 
-    input_zfab = os.path.abspath(input_zfab)
     out_dir = os.path.abspath(out_dir)
     os.makedirs(out_dir, exist_ok=True)
     debug_dir = os.path.abspath(debug_dir_config) if debug_dir_config else os.path.join(out_dir, "debug")
     os.makedirs(debug_dir, exist_ok=True)
 
-    if not os.path.exists(input_zfab):
-        raise RuntimeError(f"INPUT_ZFAB does not exist: {input_zfab}")
+    for fabric in fabric_inputs:
+        if not os.path.exists(fabric["zfab"]):
+            raise RuntimeError(f"Input fabric zfab does not exist: {fabric['zfab']}")
 
-    pairs = make_sample_pairs(sample_count, sample_mode)
+    if not variant_dir_template and len(fabric_inputs) > 1:
+        variant_dir_template = "{fabric_id}/{bend_id}"
+
+    pairs = make_sample_pairs(
+        sample_count,
+        sample_mode,
+        sample_distribution,
+        sample_seed,
+        effective_ui_min,
+        effective_ui_curve,
+        sample_bins,
+    )
+    sample_bin_allocations = None
+    if str(sample_distribution).lower() in ("ui_bucket_jittered", "bucket_jittered", "bucket"):
+        sample_bin_allocations = allocate_bucket_counts(sample_bins or UI_SAMPLE_BINS, sample_count, 2)
     summary: Dict[str, Any] = {
-        "input_zfab": input_zfab,
+        "fabric_inputs": fabric_inputs,
         "out_dir": out_dir,
-        "sample_count": sample_count,
+        "requested_sample_count": sample_count,
+        "bend_count_per_fabric": len(pairs),
+        "sample_count": len(pairs) * len(fabric_inputs),
         "sample_mode": sample_mode,
+        "sample_distribution": sample_distribution,
+        "sample_seed": sample_seed,
+        "effective_ui_min": effective_ui_min,
+        "effective_ui_curve": effective_ui_curve,
+        "sample_bins": sample_bins,
+        "sample_bin_allocations": sample_bin_allocations,
+        "variant_dir_template": variant_dir_template,
+        "bend_dir_template": bend_dir_template,
+        "preserve_bending_v2_ratio": preserve_bending_v2_ratio,
         "rule_text": RULE_TEXT,
         "rule_interpretation": "piecewise linear slope; UI=100 is clamped to actual=2000000",
         "warp_fields": WARP_FIELDS,
@@ -565,92 +988,136 @@ def main(argv: List[str] = None):
 
     print("=" * 80)
     print("[Start] CLO ZFAB bending sampler")
-    print("INPUT_ZFAB:", input_zfab)
+    print("FABRICS   :", len(fabric_inputs))
     print("OUT_DIR   :", out_dir)
     print("MODE      :", sample_mode)
-    print("SAMPLES   :", len(pairs))
+    print("DIST      :", sample_distribution)
+    print("SEED      :", sample_seed)
+    print("V2 RATIO  :", preserve_bending_v2_ratio)
+    print("REQUESTED :", sample_count)
+    print("BENDS     :", len(pairs))
+    print("SAMPLES   :", len(pairs) * len(fabric_inputs))
     print("=" * 80)
 
-    for idx, (ui_warp, ui_weft) in enumerate(pairs):
-        warp_actual = ui_to_actual(ui_warp)
-        weft_actual = ui_to_actual(ui_weft)
+    sample_index = 0
+    for fabric_idx, fabric in enumerate(fabric_inputs):
+        fabric_id = safe_id(fabric["fabric_id"], f"fabric_{fabric_idx:03d}")
+        input_zfab = fabric["zfab"]
+        print("\n" + "=" * 80)
+        print(f"[Fabric {fabric_idx+1}/{len(fabric_inputs)}] {fabric_id}")
+        print("INPUT_ZFAB:", input_zfab)
 
-        stem = f"base_{idx:03d}"
-        format_values = {
-            "index": idx,
-            "index1": idx + 1,
-            "stem": stem,
-            "warp_name": safe_name(ui_warp),
-            "weft_name": safe_name(ui_weft),
-            "ui_warp": ui_warp,
-            "ui_weft": ui_weft,
-        }
-        out_zfab = os.path.join(
-            out_dir,
-            format_stage_file_name(zfab_name_template, **format_values),
-        )
-        out_json = os.path.join(
-            out_dir,
-            format_stage_file_name(json_name_template, **format_values),
-        )
+        for bend_idx, (ui_warp, ui_weft) in enumerate(pairs):
+            warp_actual = ui_to_actual(ui_warp)
+            weft_actual = ui_to_actual(ui_weft)
+            bend_id = safe_id(
+                format_stage_file_name(
+                    bend_dir_template,
+                    index=bend_idx,
+                    index1=bend_idx + 1,
+                    ui_warp=ui_warp,
+                    ui_weft=ui_weft,
+                    warp_name=safe_name(ui_warp),
+                    weft_name=safe_name(ui_weft),
+                ),
+                f"bend_{bend_idx:03d}",
+            )
+            sample_id = f"{fabric_id}__{bend_id}"
+            stem = f"{fabric_id}_{bend_id}"
+            format_values = {
+                "index": bend_idx,
+                "index1": bend_idx + 1,
+                "sample_index": sample_index,
+                "sample_index1": sample_index + 1,
+                "fabric_index": fabric_idx,
+                "fabric_index1": fabric_idx + 1,
+                "bend_index": bend_idx,
+                "bend_index1": bend_idx + 1,
+                "fabric_id": fabric_id,
+                "bend_id": bend_id,
+                "sample_id": sample_id,
+                "stem": stem,
+                "warp_name": safe_name(ui_warp),
+                "weft_name": safe_name(ui_weft),
+                "ui_warp": ui_warp,
+                "ui_weft": ui_weft,
+            }
+            variant_rel_dir = format_stage_file_name(variant_dir_template, **format_values) if variant_dir_template else ""
+            variant_dir = os.path.join(out_dir, variant_rel_dir) if variant_rel_dir else out_dir
+            out_zfab = os.path.join(variant_dir, format_stage_file_name(zfab_name_template, **format_values))
+            out_json = os.path.join(variant_dir, format_stage_file_name(json_name_template, **format_values))
 
-        print("\n" + "-" * 80)
-        print(f"[Sample {idx+1}/{len(pairs)}] warp_ui={ui_warp:.4f}, weft_ui={ui_weft:.4f}")
-        print(f"actual: warp={warp_actual}, weft={weft_actual}")
+            print("\n" + "-" * 80)
+            print(f"[Sample {sample_index+1}/{summary['sample_count']}] {sample_id}")
+            print(f"warp_ui={ui_warp:.4f}, weft_ui={ui_weft:.4f}")
+            print(f"actual: warp={warp_actual}, weft={weft_actual}")
 
-        patch_result = patch_zfab(input_zfab, out_zfab, warp_actual, weft_actual)
+            patch_result = patch_zfab(input_zfab, out_zfab, warp_actual, weft_actual, preserve_bending_v2_ratio)
 
-        clo_load_result = None
-        clo_export_result = None
-        if load_samples_into_clo:
-            clo_load_result = load_into_clo_with_api(out_zfab)
-            print("CLO AddFabric:", clo_load_result)
+            clo_load_result = None
+            clo_export_result = None
+            if load_samples_into_clo:
+                clo_load_result = load_into_clo_with_api(out_zfab)
+                print("CLO AddFabric:", clo_load_result)
 
-            if export_through_clo_after_load and clo_load_result.get("ok"):
-                export_path = os.path.join(out_dir, stem + "_clo_exported.zfab")
-                clo_export_result = export_through_clo_api(export_path, clo_load_result.get("added_fabric_index"))
-                print("CLO ExportZFab:", clo_export_result)
+                if export_through_clo_after_load and clo_load_result.get("ok"):
+                    export_path = os.path.join(variant_dir, stem + "_clo_exported.zfab")
+                    clo_export_result = export_through_clo_api(export_path, clo_load_result.get("added_fabric_index"))
+                    print("CLO ExportZFab:", clo_export_result)
 
-        material = {
-            "source_zfab": input_zfab,
-            "output_zfab": out_zfab,
-            "ui": {
-                "bending_warp": ui_warp,
-                "bending_weft": ui_weft,
-            },
-            "actual": {
-                "bending_warp": warp_actual,
-                "bending_weft": weft_actual,
-            },
-            "rule_text": RULE_TEXT,
-            "rule_interpretation": summary["rule_interpretation"],
-            "internal_fields": {
-                "warp_fields": WARP_FIELDS,
-                "weft_fields": WEFT_FIELDS,
-            },
-            "patch_result": patch_result,
-            "clo_api": {
-                "load_result": clo_load_result,
-                "export_result": clo_export_result,
-            },
-        }
-        write_json(out_json, material)
+            material = {
+                "sample_id": sample_id,
+                "fabric_id": fabric_id,
+                "bend_id": bend_id,
+                "fabric_index": fabric_idx,
+                "bend_index": bend_idx,
+                "source_zfab": input_zfab,
+                "output_zfab": out_zfab,
+                "ui": {
+                    "bending_warp": ui_warp,
+                    "bending_weft": ui_weft,
+                },
+                "actual": {
+                    "bending_warp": warp_actual,
+                    "bending_weft": weft_actual,
+                },
+                "rule_text": RULE_TEXT,
+                "rule_interpretation": summary["rule_interpretation"],
+                "preserve_bending_v2_ratio": preserve_bending_v2_ratio,
+                "internal_fields": {
+                    "warp_fields": WARP_FIELDS,
+                    "weft_fields": WEFT_FIELDS,
+                },
+                "patch_result": patch_result,
+                "clo_api": {
+                    "load_result": clo_load_result,
+                    "export_result": clo_export_result,
+                },
+            }
+            write_json(out_json, material)
 
-        summary["samples"].append({
-            "index": idx,
-            "ui_warp": ui_warp,
-            "ui_weft": ui_weft,
-            "actual_warp": warp_actual,
-            "actual_weft": weft_actual,
-            "zfab": out_zfab,
-            "json": out_json,
-            "output_files": {
+            summary["samples"].append({
+                "sample_index": sample_index,
+                "fabric_index": fabric_idx,
+                "bend_index": bend_idx,
+                "sample_id": sample_id,
+                "fabric_id": fabric_id,
+                "bend_id": bend_id,
+                "source_zfab": input_zfab,
+                "ui_warp": ui_warp,
+                "ui_weft": ui_weft,
+                "actual_warp": warp_actual,
+                "actual_weft": weft_actual,
                 "zfab": out_zfab,
-                "material_json": out_json,
-            },
-            "patched_count": patch_result["total_patched"],
-            "clo_api_load": clo_load_result,
-        })
+                "json": out_json,
+                "output_files": {
+                    "zfab": out_zfab,
+                    "material_json": out_json,
+                },
+                "patched_count": patch_result["total_patched"],
+                "clo_api_load": clo_load_result,
+            })
+            sample_index += 1
 
     summary_path = os.path.abspath(summary_path_config) if summary_path_config else os.path.join(out_dir, "summary_bending_sampling.json")
     summary["output_files"] = {
@@ -660,17 +1127,24 @@ def main(argv: List[str] = None):
     }
     write_json(summary_path, summary)
 
-    # Save a debug scan of target field positions/values in the source zfab.
-    try:
-        with zipfile.ZipFile(input_zfab, "r") as z:
-            scans = {}
-            for info in z.infolist():
-                if info.filename.lower().endswith(".fab"):
-                    data = z.read(info.filename)
-                    scans[info.filename] = scan_fields_in_fab(data, sorted(set(WARP_FIELDS + WEFT_FIELDS + BUCKLING_WARP_FIELDS + BUCKLING_WEFT_FIELDS)))
-            write_json(os.path.join(debug_dir, "base_zfab_field_scan.json"), scans)
-    except Exception as e:
-        write_json(os.path.join(debug_dir, "base_zfab_field_scan_error.json"), {"error": repr(e)})
+    # Save debug scans of target field positions/values in each source zfab.
+    all_scans: Dict[str, Any] = {}
+    for fabric in fabric_inputs:
+        fabric_id = safe_id(fabric["fabric_id"], "fabric")
+        input_zfab = fabric["zfab"]
+        try:
+            with zipfile.ZipFile(input_zfab, "r") as z:
+                scans = {}
+                for info in z.infolist():
+                    if info.filename.lower().endswith(".fab"):
+                        data = z.read(info.filename)
+                        scans[info.filename] = scan_fields_in_fab(data, sorted(set(WARP_FIELDS + WEFT_FIELDS + BUCKLING_WARP_FIELDS + BUCKLING_WEFT_FIELDS)))
+                all_scans[fabric_id] = scans
+                write_json(os.path.join(debug_dir, f"{fabric_id}_zfab_field_scan.json"), scans)
+        except Exception as e:
+            all_scans[fabric_id] = {"error": repr(e)}
+            write_json(os.path.join(debug_dir, f"{fabric_id}_zfab_field_scan_error.json"), {"error": repr(e)})
+    write_json(os.path.join(debug_dir, "all_zfab_field_scans.json"), all_scans)
 
     print("\n" + "=" * 80)
     print("[Finished]")

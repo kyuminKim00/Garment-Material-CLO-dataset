@@ -23,45 +23,65 @@ Config에서 직접 바꾸는 핵심 값은 세 개다.
 
 ```text
 output_dir/
+  input/
+    garments/
+      base.zprj
+      other_garment.zprj
+    fabrics/
+      fabric_a.zfab
+      fabric_b.zfab
   01_fabric_bending/
-    base_000.zfab
-    base_000.material.json
-    ...
+    fabric_a/
+      bend_000/
+        fabric.zfab
+        material.json
+      bend_001/
+        fabric.zfab
+        material.json
     summary_bending_sampling.json
   02_draped_garments/
-    000_base_000/
-      draped_garment.zprj
-      summary.json
-    ...
+    base/
+      fabric_a/
+        bend_000/
+          draped_garment.zprj
+          material.json
+          summary.json
     dataset_summary.json
   03_manual_obj_exports/
-    000_base_000/
-      obj.obj
-      obj.mtl
-      obj_diffuse*.png
-      obj_normal*.png
+    base/
+      fabric_a/
+        bend_000/
+          obj.obj
+          obj.mtl
+          obj_diffuse*.png
+          obj_normal*.png
   04_blender_multiview/
-    000_base_000/
-      images/
-      sparse/0/
-        cameras.txt
-        images.txt
-        points3D.txt
-        points3D.ply
-      camera_parameters.json
-      mesh_vertices.csv
-      dataset_summary.json
+    base/
+      fabric_a/
+        bend_000/
+          images/
+          sparse/0/
+            cameras.txt
+            images.txt
+            points3D.txt
+            points3D.ply
+          camera_parameters.json
+          mesh_vertices.csv
+          dataset_summary.json
   05_3dgs/
-    000_base_000/
+    base/
+      fabric_a/
+        bend_000/
 ```
 
 Sample folder naming:
 
-`{index:03d}_{fabric_stem}`
+`{garment_id}/{fabric_id}/{bend_id}`
 
 Example:
 
-`base_000.zfab` -> `000_base_000`
+`input/garments/base.zprj` + `input/fabrics/fabric_a.zfab` + `bend_000`
+-> `base/fabric_a/bend_000`
 
 ## 1. Fabric Bending 샘플 만들기
 
@@ -71,9 +91,11 @@ Script:
 
 Config sections:
 
-- `inputs.base_fabric_zfab`
+- `inputs.input_dir`
+- `inputs.fabrics_dir`
 - `project.output_dir`
 - `naming.fabric_dir`
+- `naming.fabric_variant_dir_template`
 - `naming.fabric_file_template`
 - `fabric_sampler`
 
@@ -83,9 +105,8 @@ Input:
 
 Output:
 
-- `output_dir/01_fabric_bending/base_000.zfab`
-- `output_dir/01_fabric_bending/base_001.zfab`
-- `output_dir/01_fabric_bending/*.material.json`
+- `output_dir/01_fabric_bending/<fabric_id>/<bend_id>/fabric.zfab`
+- `output_dir/01_fabric_bending/<fabric_id>/<bend_id>/material.json`
 - `output_dir/01_fabric_bending/summary_bending_sampling.json`
 
 
@@ -97,24 +118,26 @@ Script:
 
 Config sections:
 
-- `inputs.base_garment_zprj`
+- `inputs.input_dir`
+- `inputs.garments_dir`
 - `project.output_dir`
 - `naming.fabric_dir`
 - `naming.draped_dir`
+- `naming.sample_dir_template`
 - `clo_simulation`
 
 Input:
 
 - 원단들: `output_dir/01_fabric_bending/base_*.zfab`
-- base model: `inputs.base_garment_zprj`
+- garments: `output_dir/input/garments/**/*.zprj`
 
 Output:
 
-- `output_dir/02_draped_garments/<sample>/draped_garment.zprj`
-- `output_dir/02_draped_garments/<sample>/summary.json`
+- `output_dir/02_draped_garments/<garment_id>/<fabric_id>/<bend_id>/draped_garment.zprj`
+- `output_dir/02_draped_garments/<garment_id>/<fabric_id>/<bend_id>/summary.json`
 - `output_dir/02_draped_garments/dataset_summary.json`
-- `output_dir/03_manual_obj_exports/<sample>/`
-- `output_dir/05_3dgs/<sample>/`
+- `output_dir/03_manual_obj_exports/<garment_id>/<fabric_id>/<bend_id>/`
+- `output_dir/05_3dgs/<garment_id>/<fabric_id>/<bend_id>/`
 
 
 Important:
@@ -208,3 +231,33 @@ Current config:
 나중에 만들 output:
 
 - `output_dir/05_3dgs/garment_3dgs.ply`
+
+## Current Multi-Body Layout
+
+Place body-specific base garments under `output_dir/input/garments`:
+
+```text
+input/
+  garments/
+    female/
+      base.zprj
+    male/
+      base.zprj
+  fabrics/
+    base0.zfab
+    base1.zfab
+```
+
+The pipeline discovers all `.zprj` and `.zfab` files automatically.
+`clo_make_dataset.py` writes samples as:
+
+```text
+02_draped_garments/
+  female/<fabric_id>/<bend_id>/
+  male/<fabric_id>/<bend_id>/
+```
+
+The same relative layout is used for `03_manual_obj_exports`, `04_blender_multiview`, and `05_3dgs`.
+
+Set `fabric_sampler.sample_count` to choose how many bending variants are generated per fabric.
+For `ui_bucket_jittered`, `sample_bins[*].count` acts as the relative bucket weight, while `sample_count` controls the final total count including the 0 and 100 anchors.

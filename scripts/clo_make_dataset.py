@@ -56,6 +56,7 @@ if not SCRIPT_FILE or str(SCRIPT_FILE).startswith("<") or not os.path.exists(SCR
 SCRIPT_DIR = os.path.abspath(os.path.join(os.path.dirname(SCRIPT_FILE), ".."))
 CONFIG_JSON_PATH = r"C:\Users\CGnA\Desktop\CLO\dataset_config.json"
 BASE_ZPRJ_PATH = ""
+GARMENT_INPUTS = []
 
 # 이전 코드로 만든 10개 fabric sample 폴더
 # 각 하위 폴더에 .zfab과 material.json이 있다고 가정
@@ -185,6 +186,15 @@ def load_config(path):
         return json.load(f)
 
 
+def resolve_config_path(path, output_root=""):
+    if path is None or str(path).strip() == "":
+        return ""
+    resolved = os.path.expanduser(str(path))
+    if not os.path.isabs(resolved) and output_root:
+        resolved = os.path.join(output_root, resolved)
+    return os.path.abspath(resolved)
+
+
 def find_input_file(root_dir, extension, label):
     if not root_dir:
         return ""
@@ -211,6 +221,107 @@ def find_input_file(root_dir, extension, label):
     return os.path.abspath(sorted(candidates, key=rank)[0])
 
 
+def discover_input_files(root_dir, extension):
+    if not root_dir or not os.path.exists(root_dir):
+        return []
+    ext = extension.lstrip(".").lower()
+    found = []
+    for dirpath, _, filenames in os.walk(root_dir):
+        matches = sorted(
+            os.path.join(dirpath, name)
+            for name in filenames
+            if name.lower().endswith("." + ext)
+        )
+        found.extend(matches)
+    return [os.path.abspath(path) for path in sorted(found)]
+
+
+def infer_garment_id(path, garments_dir="", fallback="garment"):
+    stem = os.path.splitext(os.path.basename(path))[0]
+    rel_parent = "."
+    if garments_dir:
+        try:
+            rel_parent = os.path.relpath(os.path.dirname(path), garments_dir)
+        except Exception:
+            rel_parent = "."
+
+    if rel_parent and rel_parent != ".":
+        return safe_name(rel_parent.replace(os.sep, "_"))
+
+    lower_stem = stem.lower()
+    if "female" in lower_stem:
+        return "female"
+    if "male" in lower_stem:
+        return "male"
+    return safe_name(stem or fallback)
+
+
+def discover_garment_inputs(config, output_root, fallback_zprj):
+    entries = (
+        deep_get(config, ["inputs", "garments"])
+        or deep_get(config, ["stage_2_clo_simulation", "inputs", "garments"])
+        or []
+    )
+    garments = []
+
+    if isinstance(entries, list):
+        for idx, entry in enumerate(entries):
+            if isinstance(entry, str):
+                path = entry
+                garment_id = infer_garment_id(path, "", f"garment_{idx:03d}")
+                metadata = {}
+            elif isinstance(entry, dict):
+                path = entry.get("zprj") or entry.get("path") or entry.get("base_zprj") or ""
+                garment_id = safe_name(entry.get("id") or entry.get("name") or infer_garment_id(path, "", f"garment_{idx:03d}"))
+                metadata = {k: v for k, v in entry.items() if k not in ("zprj", "path", "base_zprj")}
+            else:
+                continue
+            if path:
+                garments.append({
+                    "garment_id": garment_id,
+                    "zprj": resolve_config_path(path, output_root),
+                    "metadata": metadata,
+                })
+
+    input_dir = (
+        deep_get(config, ["inputs", "input_dir"])
+        or deep_get(config, ["stage_2_clo_simulation", "inputs", "input_dir"])
+        or "input"
+    )
+    input_dir = resolve_config_path(input_dir, output_root)
+    garments_dir = (
+        deep_get(config, ["inputs", "garments_dir"])
+        or deep_get(config, ["stage_2_clo_simulation", "inputs", "garments_dir"])
+        or os.path.join(input_dir, "garments")
+    )
+    if garments_dir:
+        garments_dir = resolve_config_path(garments_dir, output_root)
+        for path in discover_input_files(garments_dir, "zprj"):
+            garment_id = infer_garment_id(path, garments_dir, f"garment_{len(garments):03d}")
+            garments.append({
+                "garment_id": garment_id,
+                "zprj": path,
+                "metadata": {"source": "garments_dir"},
+            })
+
+    if fallback_zprj and not garments:
+        garments.append({
+            "garment_id": "garment_000",
+            "zprj": resolve_config_path(fallback_zprj, output_root),
+            "metadata": {"source": "legacy_base_garment_zprj"},
+        })
+
+    deduped = []
+    seen = set()
+    for item in garments:
+        key = os.path.normcase(os.path.abspath(item["zprj"]))
+        if key in seen:
+            continue
+        seen.add(key)
+        deduped.append(item)
+    return deduped
+
+
 def parse_args(argv):
     parser = argparse.ArgumentParser(description="Run CLO simulation and export OBJ bundles.")
     parser.add_argument("--config", default="", help="Pipeline JSON config path.")
@@ -222,7 +333,7 @@ def parse_args(argv):
 
 
 def apply_config(config, args):
-    global BASE_ZPRJ_PATH, FABRIC_SAMPLE_ROOT, OUT_DIR, MANUAL_OBJ_DIR, GS_DIR
+    global BASE_ZPRJ_PATH, GARMENT_INPUTS, FABRIC_SAMPLE_ROOT, OUT_DIR, MANUAL_OBJ_DIR, GS_DIR
     global SAMPLE_DIR_TEMPLATE, DRAPED_ZPRJ_FILE_NAME, SAMPLE_SUMMARY_FILE_NAME
     global DATASET_SUMMARY_JSON
     global NUM_VIEWS, IMAGE_WIDTH, IMAGE_HEIGHT, START_INDEX
@@ -257,6 +368,7 @@ def apply_config(config, args):
         or find_input_file(output_root, "zprj", "base zprj")
         or BASE_ZPRJ_PATH
     )
+    GARMENT_INPUTS = discover_garment_inputs(config, output_root, BASE_ZPRJ_PATH)
     FABRIC_SAMPLE_ROOT = (
         args.fabric_sample_root
         or deep_get(config, ["stage_2_clo_simulation", "inputs", "fabric_dir"])
@@ -493,11 +605,86 @@ def get_material_json_path(sample_dir):
     return None
 
 
+def infer_variant_ids(sample_dir, zfab_path, material_data=None):
+    material_data = material_data or {}
+    fabric_id = material_data.get("fabric_id")
+    bend_id = material_data.get("bend_id")
+    sample_id = material_data.get("sample_id")
+
+    rel_parts = []
+    try:
+        rel = os.path.relpath(sample_dir if os.path.isdir(sample_dir) else os.path.dirname(zfab_path), FABRIC_SAMPLE_ROOT)
+        rel_parts = [part for part in rel.split(os.sep) if part and part != "."]
+    except Exception:
+        pass
+
+    if not fabric_id:
+        if len(rel_parts) >= 2:
+            fabric_id = rel_parts[-2]
+        elif len(rel_parts) == 1:
+            fabric_id = rel_parts[0]
+        else:
+            fabric_id = os.path.splitext(os.path.basename(zfab_path))[0]
+    if not bend_id:
+        if len(rel_parts) >= 2:
+            bend_id = rel_parts[-1]
+        else:
+            bend_id = os.path.splitext(os.path.basename(zfab_path))[0]
+
+    fabric_id = safe_name(fabric_id)
+    bend_id = safe_name(bend_id)
+    sample_id = safe_name(sample_id or f"{fabric_id}__{bend_id}")
+    return fabric_id, bend_id, sample_id
+
+
+def build_fabric_variant_records(sample_dirs):
+    variants = []
+    for idx, sample_dir in enumerate(sample_dirs):
+        zfab_path = get_zfab_path(sample_dir)
+        material_src = get_material_json_path(sample_dir)
+        material_data = None
+        material_json_error = None
+        if material_src:
+            material_data, material_json_error = try_read_json(material_src)
+        fabric_id, bend_id, sample_id = infer_variant_ids(sample_dir, zfab_path, material_data)
+        variants.append({
+            "variant_index": idx,
+            "source_sample_dir": sample_dir,
+            "zfab_path": zfab_path,
+            "material_json": material_src,
+            "material_json_error": material_json_error,
+            "material_data": material_data,
+            "fabric_id": fabric_id,
+            "bend_id": bend_id,
+            "sample_id": sample_id,
+        })
+    return variants
+
+
+def build_dataset_jobs(garments, fabric_variants):
+    jobs = []
+    for garment_index, garment in enumerate(garments):
+        garment_id = safe_name(garment.get("garment_id") or f"garment_{garment_index:03d}")
+        for variant in fabric_variants:
+            sample_id = f"{garment_id}__{variant['fabric_id']}__{variant['bend_id']}"
+            jobs.append({
+                "sample_index": len(jobs),
+                "sample_id": sample_id,
+                "garment_index": garment_index,
+                "garment_id": garment_id,
+                "body_id": garment_id,
+                "garment_zprj": garment["zprj"],
+                "garment_metadata": garment.get("metadata", {}),
+                "fabric_variant": variant,
+            })
+    return jobs
+
+
 # =============================================================================
 # CLO wrappers
 # =============================================================================
 
-def new_project_and_import_base():
+def new_project_and_import_base(base_zprj_path=None):
     """
     매 sample마다 base ZPRJ를 다시 열어 drape 초기 상태를 동일하게 만듦.
     """
@@ -506,11 +693,12 @@ def new_project_and_import_base():
     except Exception as e:
         print(f"[Warning] NewProject failed or unavailable: {e}")
 
-    result = import_api.ImportFile(BASE_ZPRJ_PATH)
+    base_zprj_path = base_zprj_path or BASE_ZPRJ_PATH
+    result = import_api.ImportFile(base_zprj_path)
 
     # CLO API는 성공 시 None/string/bool 등 버전별로 다를 수 있음
     if result == "" or result is False:
-        raise RuntimeError(f"Import base ZPRJ failed: {BASE_ZPRJ_PATH}")
+        raise RuntimeError(f"Import base ZPRJ failed: {base_zprj_path}")
 
     try:
         utility_api.Refresh3DWindow()
@@ -1883,7 +2071,7 @@ def prepare_garment_only_render():
 def main(argv=None):
     args = parse_args(sys.argv[1:] if argv is None else argv)
     default_config = os.path.join(os.path.dirname(SCRIPT_FILE), "dataset_pipeline_config.json")
-    config_path = CONFIG_JSON_PATH or args.config or os.environ.get("CLO_DATASET_CONFIG", "")
+    config_path = args.config or os.environ.get("CLO_DATASET_CONFIG", "") or CONFIG_JSON_PATH
     if not config_path and os.path.exists(default_config):
         config_path = default_config
     config = load_config(config_path)
@@ -1894,10 +2082,11 @@ def main(argv=None):
     os.makedirs(MANUAL_OBJ_DIR, exist_ok=True)
     os.makedirs(GS_DIR, exist_ok=True)
 
-    if not BASE_ZPRJ_PATH:
-        raise RuntimeError("BASE_ZPRJ_PATH is empty. Set inputs.base_garment_zprj in the config, or pass --base_zprj.")
-    if not os.path.exists(BASE_ZPRJ_PATH):
-        raise RuntimeError(f"BASE_ZPRJ_PATH does not exist: {BASE_ZPRJ_PATH}")
+    if not GARMENT_INPUTS:
+        raise RuntimeError("No garment input found. Put .zprj files under output_dir/input/garments, set inputs.garments_dir, or pass --base_zprj.")
+    for garment in GARMENT_INPUTS:
+        if not os.path.exists(garment["zprj"]):
+            raise RuntimeError(f"Garment ZPRJ does not exist: {garment['zprj']}")
     if not os.path.exists(FABRIC_SAMPLE_ROOT):
         raise RuntimeError(f"FABRIC_SAMPLE_ROOT does not exist: {FABRIC_SAMPLE_ROOT}")
 
@@ -1906,11 +2095,15 @@ def main(argv=None):
     if len(all_sample_dirs) == 0:
         raise RuntimeError(f"No .zfab sample folders found in {FABRIC_SAMPLE_ROOT}")
 
-    sample_dirs = all_sample_dirs[:MAX_SAMPLES] if MAX_SAMPLES > 0 else all_sample_dirs
+    fabric_variants = build_fabric_variant_records(all_sample_dirs)
+    all_jobs = build_dataset_jobs(GARMENT_INPUTS, fabric_variants)
+    jobs = all_jobs[:MAX_SAMPLES] if MAX_SAMPLES > 0 else all_jobs
 
-    print(f"[Info] Found {len(all_sample_dirs)} fabric samples")
+    print(f"[Info] Found {len(GARMENT_INPUTS)} garment(s)")
+    print(f"[Info] Found {len(fabric_variants)} fabric variant(s)")
+    print(f"[Info] Planned {len(all_jobs)} garment/fabric/bending sample(s)")
     if MAX_SAMPLES > 0:
-        print(f"[Info] Limit CLO processing to {len(sample_dirs)} sample(s)")
+        print(f"[Info] Limit CLO processing to {len(jobs)} sample(s)")
 
     dataset_summary_path = (
         os.path.abspath(DATASET_SUMMARY_JSON)
@@ -1920,8 +2113,12 @@ def main(argv=None):
     os.makedirs(os.path.dirname(dataset_summary_path), exist_ok=True)
     dataset_summary = {
         "created_at": time.strftime("%Y-%m-%d %H:%M:%S"),
-        "base_zprj": BASE_ZPRJ_PATH,
+        "garments": GARMENT_INPUTS,
         "fabric_sample_root": FABRIC_SAMPLE_ROOT,
+        "fabric_variants": [
+            {k: v for k, v in item.items() if k not in ("material_data",)}
+            for item in fabric_variants
+        ],
         "out_dir": OUT_DIR,
         "output_files": {
             "draped_dir": OUT_DIR,
@@ -1929,8 +2126,9 @@ def main(argv=None):
             "gs_dir": GS_DIR,
             "dataset_summary_json": dataset_summary_path,
         },
-        "total_available_samples": len(all_sample_dirs),
-        "num_samples": len(sample_dirs),
+        "total_available_fabric_variants": len(fabric_variants),
+        "total_available_samples": len(all_jobs),
+        "num_samples": len(jobs),
         "max_samples": MAX_SAMPLES,
         "stop_on_first_failure": STOP_ON_FIRST_FAILURE,
         "simulation": {
@@ -1967,10 +2165,11 @@ def main(argv=None):
         "samples": []
     }
 
-    for sample_idx, sample_dir in enumerate(sample_dirs):
-        sample_name = os.path.splitext(os.path.basename(sample_dir))[0] if os.path.isfile(sample_dir) else os.path.basename(sample_dir)
-        zfab_path = get_zfab_path(sample_dir)
-        material_src = get_material_json_path(sample_dir)
+    for sample_idx, job in enumerate(jobs):
+        variant = job["fabric_variant"]
+        sample_name = job["sample_id"]
+        zfab_path = variant["zfab_path"]
+        material_src = variant["material_json"]
 
         safe_sample_name = safe_name(sample_name)
         out_sample_dir_name = format_stage_template(
@@ -1979,6 +2178,10 @@ def main(argv=None):
             index1=sample_idx + 1,
             sample_name=safe_sample_name,
             fabric_stem=safe_sample_name,
+            garment_id=job["garment_id"],
+            fabric_id=variant["fabric_id"],
+            bend_id=variant["bend_id"],
+            sample_id=safe_sample_name,
         )
         out_sample_dir = os.path.join(OUT_DIR, out_sample_dir_name)
         manual_obj_sample_dir = os.path.join(MANUAL_OBJ_DIR, out_sample_dir_name)
@@ -1991,8 +2194,13 @@ def main(argv=None):
         os.makedirs(gs_sample_dir, exist_ok=True)
 
         print("=" * 80)
-        print(f"[Sample {sample_idx:03d}/{len(sample_dirs)}]")
-        print(f"  source sample : {sample_dir}")
+        print(f"[Sample {sample_idx:03d}/{len(jobs)}]")
+        print(f"  sample id     : {safe_sample_name}")
+        print(f"  garment       : {job['garment_id']}")
+        print(f"  garment zprj  : {job['garment_zprj']}")
+        print(f"  fabric        : {variant['fabric_id']}")
+        print(f"  bend          : {variant['bend_id']}")
+        print(f"  source sample : {variant['source_sample_dir']}")
         print(f"  zfab          : {zfab_path}")
         print(f"  output        : {out_sample_dir}")
         print(f"  manual obj    : {manual_obj_sample_dir}")
@@ -2000,7 +2208,13 @@ def main(argv=None):
 
         sample_record = {
             "sample_index": sample_idx,
-            "source_sample_dir": sample_dir,
+            "sample_id": safe_sample_name,
+            "garment_id": job["garment_id"],
+            "body_id": job["body_id"],
+            "fabric_id": variant["fabric_id"],
+            "bend_id": variant["bend_id"],
+            "garment_zprj": job["garment_zprj"],
+            "source_sample_dir": variant["source_sample_dir"],
             "zfab_path": zfab_path,
             "output_dir": out_sample_dir,
             "output_files": {
@@ -2015,7 +2229,7 @@ def main(argv=None):
 
         try:
             # 1. base A-pose scene reload
-            new_project_and_import_base()
+            new_project_and_import_base(job["garment_zprj"])
 
             # 2. fabric 적용
             added_fabric_idx, pattern_count = add_and_assign_fabric_to_all_patterns(zfab_path)

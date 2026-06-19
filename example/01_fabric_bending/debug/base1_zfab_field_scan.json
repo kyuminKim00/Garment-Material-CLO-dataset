@@ -1,0 +1,65 @@
+{
+  "V2_Cut_Sew_Knit_JacquardKnit_1.fab": {
+    "fBuK": [
+      {
+        "value_offset": 38233,
+        "value_float_le": 1103.7183837890625,
+        "raw_hex": "fdf68944"
+      },
+      {
+        "value_offset": 38844,
+        "value_float_le": 1103.7183837890625,
+        "raw_hex": "fdf68944"
+      }
+    ],
+    "fBuK_v2": [
+      {
+        "value_offset": 38260,
+        "value_float_le": 3467.433837890625,
+        "raw_hex": "f1b65845"
+      },
+      {
+        "value_offset": 38863,
+        "value_float_le": 3467.433837890625,
+        "raw_hex": "f1b65845"
+      }
+    ],
+    "fBucklingStiffnessU": [
+      {
+        "value_offset": 37977,
+        "value_float_le": 1.0,
+        "raw_hex": "0000803f"
+      },
+      {
+        "value_offset": 38544,
+        "value_float_le": 1.0,
+        "raw_hex": "0000803f"
+      }
+    ],
+    "fBucklingStiffnessV": [
+      {
+        "value_offset": 38359,
+        "value_float_le": 1.0,
+        "raw_hex": "0000803f"
+      },
+      {
+        "value_offset": 38979,
+        "value_float_le": 1.0,
+        "raw_hex": "0000803f"
+      }
+    ],
+    "fBvK": [],
+    "fBvK_v2": [
+      {
+        "value_offset": 38271,
+        "value_float_le": 15860.4462890625,
+        "raw_hex": "c9d17746"
+      },
+      {
+        "value_offset": 38505,
+        "value_float_le": 15860.4462890625,
+        "raw_hex": "c9d17746"
+      }
+    ]
+  }
+}
