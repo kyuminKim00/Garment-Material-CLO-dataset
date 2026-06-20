@@ -104,8 +104,8 @@
       "--save_iterations",
       "30000"
     ],
-    "render_after_train": false,
-    "render_preview_count": 4,
+    "skip_existing": true,
+    "render_after_train": true,
     "render_extra_args": []
   }
 }

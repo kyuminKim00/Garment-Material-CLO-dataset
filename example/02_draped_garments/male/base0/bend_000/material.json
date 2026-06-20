@@ -4,8 +4,8 @@
   "bend_id": "bend_000",
   "fabric_index": 0,
   "bend_index": 0,
-  "source_zfab": "C:\\Users\\CGnA\\Desktop\\CLO\\example\\input\\fabrics\\base0.zfab",
-  "output_zfab": "C:\\Users\\CGnA\\Desktop\\CLO\\example\\01_fabric_bending\\base0/bend_000\\fabric.zfab",
+  "source_zfab": "C:\\Users\\CGnA\\Desktop\\CLO\\dataset\\input\\fabrics\\base0.zfab",
+  "output_zfab": "C:\\Users\\CGnA\\Desktop\\CLO\\dataset\\01_fabric_bending\\base0/bend_000\\fabric.zfab",
   "ui": {
     "bending_warp": 0.0,
     "bending_weft": 0.0,
@@ -48,8 +48,8 @@
     "patch_bending_bias": true
   },
   "patch_result": {
-    "input_zfab": "C:\\Users\\CGnA\\Desktop\\CLO\\example\\input\\fabrics\\base0.zfab",
-    "output_zfab": "C:\\Users\\CGnA\\Desktop\\CLO\\example\\01_fabric_bending\\base0/bend_000\\fabric.zfab",
+    "input_zfab": "C:\\Users\\CGnA\\Desktop\\CLO\\dataset\\input\\fabrics\\base0.zfab",
+    "output_zfab": "C:\\Users\\CGnA\\Desktop\\CLO\\dataset\\01_fabric_bending\\base0/bend_000\\fabric.zfab",
     "fab_files": [
       "V2_Cut_Sew_Knit_Fleece_3.fab"
     ],

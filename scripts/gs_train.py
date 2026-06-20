@@ -56,10 +56,9 @@ def parse_args():
     )
     parser.add_argument("--sample_index", type=int, default=None, help="Sample index when not training all.")
     parser.add_argument(
-        "--render_preview_count",
-        type=int,
+        "--skip_existing",
         default=None,
-        help="Number of trained 3DGS preview renders to copy into each output folder.",
+        help="true skips samples that already have a point_cloud.ply; false retrains them.",
     )
     parser.add_argument("--dry_run", action="store_true", help="Print commands without running train.py.")
     return parser.parse_args()
@@ -127,32 +126,33 @@ def find_latest_render_dir(output_dir):
     return candidates[-1] if candidates else None
 
 
-def copy_preview_renders(render_dir, output_dir, preview_count):
-    preview_dir = output_dir / "preview_renders"
-    preview_dir.mkdir(parents=True, exist_ok=True)
-
-    selected = sorted(render_dir.glob("*.png"))[:preview_count]
-    if len(selected) < preview_count:
-        raise RuntimeError(
-            f"Expected at least {preview_count} rendered previews under {render_dir}, "
-            f"found {len(selected)}"
-        )
-
-    copied = []
-    for index, source in enumerate(selected):
-        target = preview_dir / f"{index:04d}.png"
-        shutil.copy2(source, target)
-        copied.append(str(target))
-    return copied
-
-
 def write_summary(path, summary):
     path.parent.mkdir(parents=True, exist_ok=True)
     with open(path, "w", encoding="utf-8") as handle:
         json.dump(summary, handle, indent=2)
 
 
-def render_preview(target, gs_repo, python_executable, preview_count, render_extra_args, dry_run):
+def existing_training_result(target):
+    output_dir = target["output_dir"].resolve()
+    point_cloud = find_latest_point_cloud(output_dir)
+    if not point_cloud:
+        return None
+
+    result = {
+        "status": "skipped_existing",
+        "source_dir": str(target["source_dir"].resolve()),
+        "output_dir": str(output_dir),
+        "point_cloud_ply": str(point_cloud),
+    }
+
+    render_dir = find_latest_render_dir(output_dir)
+    if render_dir:
+        result["render_dir"] = str(render_dir)
+
+    return result
+
+
+def render_preview(target, gs_repo, python_executable, render_extra_args, dry_run):
     render_py = gs_repo / "render.py"
     if not render_py.exists():
         raise FileNotFoundError(f"Gaussian Splatting render.py not found: {render_py}")
@@ -173,7 +173,6 @@ def render_preview(target, gs_repo, python_executable, preview_count, render_ext
         return {
             "render_status": "dry_run",
             "render_command": command,
-            "preview_renders": [],
         }
 
     subprocess.run(command, cwd=str(gs_repo), check=True)
@@ -182,12 +181,10 @@ def render_preview(target, gs_repo, python_executable, preview_count, render_ext
     if not render_dir:
         raise FileNotFoundError(f"Rendered images were not produced under {output_dir}/train")
 
-    preview_renders = copy_preview_renders(render_dir, output_dir, preview_count)
     return {
         "render_status": "success",
         "render_command": command,
         "render_dir": str(render_dir),
-        "preview_renders": preview_renders,
     }
 
 
@@ -197,7 +194,6 @@ def train_one(
     python_executable,
     train_extra_args,
     render_after_train,
-    preview_count,
     render_extra_args,
     dry_run,
 ):
@@ -233,13 +229,12 @@ def train_one(
             "output_dir": str(output_dir),
             "point_cloud_ply": "",
         }
-        if render_after_train and preview_count > 0:
+        if render_after_train:
             result.update(
                 render_preview(
                     target,
                     gs_repo,
                     python_executable,
-                    preview_count,
                     render_extra_args,
                     dry_run=True,
                 )
@@ -264,13 +259,12 @@ def train_one(
         "output_dir": str(output_dir),
         "point_cloud_ply": str(point_cloud),
     }
-    if render_after_train and preview_count > 0:
+    if render_after_train:
         result.update(
             render_preview(
                 target,
                 gs_repo,
                 python_executable,
-                preview_count,
                 render_extra_args,
                 dry_run=False,
             )
@@ -308,15 +302,14 @@ def main():
     train_extra_args = [str(value) for value in train_extra_args]
 
     render_after_train = parse_bool(deep_get(config, ["3dgs_training", "render_after_train"], True), True)
-    preview_count = (
-        args.render_preview_count
-        if args.render_preview_count is not None
-        else int(deep_get(config, ["3dgs_training", "render_preview_count"], 4))
-    )
     render_extra_args = deep_get(config, ["3dgs_training", "render_extra_args"], [])
     if not isinstance(render_extra_args, list):
         raise TypeError("3dgs_training.render_extra_args must be a list")
     render_extra_args = [str(value) for value in render_extra_args]
+    skip_existing = parse_bool(
+        args.skip_existing,
+        parse_bool(deep_get(config, ["3dgs_training", "skip_existing"], True), True),
+    )
 
     render_all_samples = parse_bool(
         args.render_all_samples,
@@ -343,8 +336,8 @@ def main():
         "render_all_samples": render_all_samples,
         "num_targets": len(targets),
         "dry_run": args.dry_run,
+        "skip_existing": skip_existing,
         "render_after_train": render_after_train,
-        "render_preview_count": preview_count,
         "samples": [],
     }
     write_summary(pipeline_summary_path, pipeline_summary)
@@ -361,13 +354,19 @@ def main():
         write_summary(pipeline_summary_path, pipeline_summary)
 
         try:
-            result = train_one(
-                target,
-                gs_repo,
+            result = existing_training_result(target) if skip_existing else None
+            if result:
+                print("=" * 80)
+                print(f"[Skip] {target['sample_name']}")
+                print(f"  output : {result['output_dir']}")
+                print(f"  point  : {result['point_cloud_ply']}")
+            else:
+                result = train_one(
+                    target,
+                    gs_repo,
                 python_executable,
                 train_extra_args,
                 render_after_train,
-                preview_count,
                 render_extra_args,
                 args.dry_run,
             )
