@@ -184,6 +184,16 @@ def deep_get(obj, keys, default=None):
     return cur
 
 
+def parse_bool(value, default=False):
+    if value is None or value == "":
+        return default
+    if isinstance(value, bool):
+        return value
+    if isinstance(value, (int, float)):
+        return bool(value)
+    return str(value).strip().lower() in ("1", "true", "yes", "y", "on")
+
+
 def load_config(path):
     if not path:
         return {}
@@ -435,12 +445,17 @@ def apply_config(config, args):
             deep_get(config, ["clo_simulation", "sim_steps"], deep_get(config, ["clo", "sim_steps"], SIM_STEPS)),
         )
     )
-    SAVE_SIM_ZPRJ = bool(
+    SAVE_SIM_ZPRJ = parse_bool(
         deep_get(
             config,
             ["stage_2_clo_simulation", "settings", "save_sim_zprj"],
-            deep_get(config, ["clo_simulation", "save_sim_zprj"], deep_get(config, ["clo", "save_sim_zprj"], SAVE_SIM_ZPRJ)),
-        )
+            deep_get(
+                config,
+                ["clo_simulation", "save_sim_zprj"],
+                deep_get(config, ["clo", "save_sim_zprj"], SAVE_SIM_ZPRJ),
+            ),
+        ),
+        SAVE_SIM_ZPRJ,
     )
     MAX_SAMPLES = int(
         deep_get(
@@ -1521,7 +1536,7 @@ def main(argv=None):
             "zfab_path": zfab_path,
             "output_dir": out_sample_dir,
             "output_files": {
-                "draped_zprj": planned_draped_zprj_path,
+                "draped_zprj": planned_draped_zprj_path if SAVE_SIM_ZPRJ else None,
                 "obj_dir": out_sample_dir,
                 "gs_dir": gs_sample_dir,
                 "sample_summary_json": sample_summary_path,

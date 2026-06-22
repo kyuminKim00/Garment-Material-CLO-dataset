@@ -1,7 +1,12 @@
 {
   "project": {
     "name": "CLO garment dataset",
-    "output_dir": "/home/cgna/km/Garment-Material-CLO-dataset/dataset"
+    "output_dir": "D:/KKM/CLO-dataset"
+  },
+  "pipeline": {
+    "run_until_stage": 2,
+    "blender_executable": "blender",
+    "python_executable": "python"
   },
   "inputs": {
     "input_dir": "input",
@@ -76,7 +81,7 @@
     "sim_steps": 300,
     "max_samples": 0,
     "stop_on_first_failure": true,
-    "save_sim_zprj": true,
+    "save_sim_zprj": false,
     "skip_render": true,
     "export_obj": true
   },

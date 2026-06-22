@@ -301,7 +301,7 @@ DyeTech_CLO_Garment_Dataset/
 | `fabric_sampler.patch_bending_bias` | `true` | Warp/Weft와 함께 Bias bending도 같은 bending level로 변경 |
 | `fabric_sampler.bias_fields` | `["fBhK", "fBhK_v2", "fBLeftShearK", "fBLeftShearK_v2", "fBRightShearK", "fBRightShearK_v2"]` | CLO `.fab` 내부 Bias bending 후보 필드 |
 | `clo_simulation.sim_steps` | `300` | 기본 유지 |
-| `clo_simulation.save_sim_zprj` | `true` | draped `.zprj` 저장 |
+| `clo_simulation.save_sim_zprj` | `true` | draped `.zprj` 저장 여부 |
 | `clo_simulation.export_obj` | `true` | simulation 후 `02_draped_garments` sample 폴더에 OBJ/MTL/texture 자동 export |
 | `clo_simulation.skip_render` | `true` | CLO 내 렌더는 사용하지 않음 |
 | `blender_render.render_all_samples` | `true` | 모든 OBJ 샘플 렌더링 |
@@ -369,15 +369,22 @@ DyeTech_CLO_Garment_Dataset/
 
 ---
 
-## 9. 01-03 한번에 실행
+## 9. 00-04 단계 선택 실행
 
-`scripts/run_stages_01_03.py`는 CLO를 새로 실행하지 않는다. CLO Python Script Editor에 코드를 붙여넣어 실행하는 용도다.
+`scripts/run_stages.py`는 CLO를 새로 실행하지 않는다. CLO Python Script Editor에 코드를 붙여넣어 실행하는 용도다.
+실행할 마지막 단계는 config의 `pipeline.run_until_stage`에서 관리한다.
 
-동작 순서:
+예시:
 
-1. 현재 CLO Python 프로세스에서 `clo_fab_sampler.py` 실행
-2. 현재 CLO Python 프로세스에서 `clo_make_dataset.py` 실행
-3. Blender를 `--background`로 실행해서 `blender_render.py` 실행
+```powershell
+python scripts/run_stages.py
+```
+
+- `0`: config 경로만 확인하고 종료
+- `1`: stage 01 실행
+- `2`: stage 01-02 실행
+- `3`: stage 01-03 실행
+- `4`: stage 01-04 실행
 
 기본 config 경로는 스크립트 안에 하드코딩되어 있다.
 
@@ -386,6 +393,7 @@ CONFIG_JSON_PATH = r"C:\Users\CGnA\Desktop\CLO\dataset_config.json"
 ```
 
 Blender가 `PATH`에 없으면 `--blender` 인자로 Blender 실행 파일 경로를 넘긴다.
+기본 Blender/Python 실행 파일은 `pipeline.blender_executable`, `pipeline.python_executable`에서 관리한다.
 
 ---
 

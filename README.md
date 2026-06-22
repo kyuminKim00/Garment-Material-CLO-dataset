@@ -140,6 +140,7 @@ Output:
 Important:
 
 - 이 단계에서 OBJ/MTL/texture를 자동 export한다.
+- draped `.zprj` 저장 여부는 `clo_simulation.save_sim_zprj`에서 고른다.
 - `clo_simulation.export_obj`는 `true`로 둔다.
 - CLO Python Script Editor 안에서 실행한다.
 
@@ -185,17 +186,24 @@ Output:
 
 sample 하나만 렌더링하려면 `blender_render.render_all_samples`를 `false`로 바꾸고 `blender_render.sample_index`를 지정한다.
 
-## 4. 01-03 한번에 실행
+## 4. 00-04 단계 선택 실행
 
 Script:
 
-`PATH/scripts/run_stages_01_03.py`
+`PATH/scripts/run_stages.py`
 
-이 스크립트는 CLO를 새로 실행하지 않는다. CLO Python Script Editor에 코드를 붙여넣어 실행하면 아래 순서로 진행한다.
+이 스크립트는 CLO를 새로 실행하지 않는다. CLO Python Script Editor에 코드를 붙여넣어 실행하는 용도다.
+실행할 마지막 단계는 config의 `pipeline.run_until_stage`에서 관리한다.
 
-1. 현재 CLO Python 프로세스에서 `clo_fab_sampler.py` 실행
-2. 현재 CLO Python 프로세스에서 `clo_make_dataset.py` 실행
-3. Blender를 background mode로 실행해서 `blender_render.py` 실행
+```powershell
+python PATH/scripts/run_stages.py
+```
+
+- `0`: config 경로만 확인하고 종료
+- `1`: stage 01 실행
+- `2`: stage 01-02 실행
+- `3`: stage 01-03 실행
+- `4`: stage 01-04 실행
 
 Config 경로는 스크립트 안에 기본값으로 하드코딩되어 있다.
 
@@ -204,6 +212,7 @@ CONFIG_JSON_PATH = r"C:\Users\CGnA\Desktop\CLO\dataset_config.json"
 ```
 
 Blender가 `PATH`에 없으면 `--blender`로 Blender 실행 파일 경로를 넘긴다.
+기본 Blender/Python 실행 파일은 `pipeline.blender_executable`, `pipeline.python_executable`에서 관리한다.
 
 ## 5. 3DGS 학습
 
