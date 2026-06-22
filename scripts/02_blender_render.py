@@ -1162,18 +1162,17 @@ def main():
             obj_file_name,
         )
     else:
-        sample_dir_name = derived_sample_dir_name(config, sample_index)
-        sample_obj_dir = obj_root / sample_dir_name
-        targets = [
-            {
-                "sample_index": sample_index,
-                "sample_name": sample_dir_name,
-                "obj_path": str(sample_obj_dir / obj_file_name),
-                "diffuse_path": explicit_diffuse_path,
-                "normal_path": explicit_normal_path,
-                "output_dir": str(render_root / sample_dir_name),
-            }
-        ]
+        all_targets = discover_render_targets(
+            obj_root,
+            render_root,
+            obj_file_name,
+        )
+        matches = [target for target in all_targets if target["sample_index"] == sample_index]
+        if not matches:
+            raise RuntimeError(f"No render sample matched sample_index={sample_index}")
+        targets = matches[:1]
+        targets[0]["diffuse_path"] = explicit_diffuse_path
+        targets[0]["normal_path"] = explicit_normal_path
 
     pipeline_summary = {
         "render_all_samples": render_all_samples,

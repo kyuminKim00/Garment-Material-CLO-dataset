@@ -380,9 +380,23 @@ def apply_config(config, args):
         or BASE_ZPRJ_PATH
     )
     GARMENT_INPUTS = discover_garment_inputs(config, output_root, BASE_ZPRJ_PATH)
+    input_dir = (
+        deep_get(config, ["inputs", "input_dir"])
+        or deep_get(config, ["stage_2_clo_simulation", "inputs", "input_dir"])
+        or "input"
+    )
+    input_dir = resolve_config_path(input_dir, output_root)
+    fabrics_dir = (
+        deep_get(config, ["inputs", "fabrics_dir"])
+        or deep_get(config, ["stage_2_clo_simulation", "inputs", "fabrics_dir"])
+        or os.path.join(input_dir, "fabrics")
+    )
+    fabrics_dir = resolve_config_path(fabrics_dir, output_root)
     FABRIC_SAMPLE_ROOT = (
         args.fabric_sample_root
         or deep_get(config, ["stage_2_clo_simulation", "inputs", "fabric_dir"])
+        or deep_get(config, ["stage_2_clo_simulation", "inputs", "fabrics_dir"])
+        or fabrics_dir
         or deep_get(config, ["stage_1_fabric_sampler", "outputs", "fabric_dir"])
         or deep_get(config, ["clo", "fabric_sample_root"])
         or deep_get(config, ["paths", "zfab_output_dir"])
@@ -507,7 +521,11 @@ def apply_config(config, args):
     )
     OBJ_EXPORT_SCALE = float(deep_get(config, ["clo", "obj_export_scale"], OBJ_EXPORT_SCALE))
     CLO_VERSION = str(deep_get(config, ["clo", "clo_version"], CLO_VERSION))
-    EXPECT_BENDING_BIAS_PATCH = bool(
+    uses_original_fabric_pool = (
+        os.path.normcase(os.path.abspath(FABRIC_SAMPLE_ROOT))
+        == os.path.normcase(os.path.abspath(fabrics_dir))
+    )
+    EXPECT_BENDING_BIAS_PATCH = (not uses_original_fabric_pool) and bool(
         deep_get(
             config,
             ["stage_1_fabric_sampler", "settings", "patch_bending_bias"],
@@ -600,7 +618,7 @@ def get_material_json_path(sample_dir):
 def infer_variant_ids(sample_dir, zfab_path, material_data=None):
     material_data = material_data or {}
     fabric_id = material_data.get("fabric_id")
-    bend_id = material_data.get("bend_id")
+    bend_id = material_data.get("bend_id") or material_data.get("variant_id")
     sample_id = material_data.get("sample_id")
 
     rel_parts = []
@@ -621,7 +639,7 @@ def infer_variant_ids(sample_dir, zfab_path, material_data=None):
         if len(rel_parts) >= 2:
             bend_id = rel_parts[-1]
         else:
-            bend_id = os.path.splitext(os.path.basename(zfab_path))[0]
+            bend_id = "original"
 
     fabric_id = safe_name(fabric_id)
     bend_id = safe_name(bend_id)
@@ -716,10 +734,10 @@ def validate_fabric_variant_metadata(fabric_variants):
 
 def build_dataset_jobs(garments, fabric_variants):
     jobs = []
-    for garment_index, garment in enumerate(garments):
-        garment_id = safe_name(garment.get("garment_id") or f"garment_{garment_index:03d}")
-        for variant in fabric_variants:
-            sample_id = f"{garment_id}__{variant['fabric_id']}__{variant['bend_id']}"
+    for variant in fabric_variants:
+        for garment_index, garment in enumerate(garments):
+            garment_id = safe_name(garment.get("garment_id") or f"garment_{garment_index:03d}")
+            sample_id = f"{variant['fabric_id']}__{garment_id}"
             jobs.append({
                 "sample_index": len(jobs),
                 "sample_id": sample_id,
@@ -1431,8 +1449,8 @@ def main(argv=None):
     jobs = all_jobs[:MAX_SAMPLES] if MAX_SAMPLES > 0 else all_jobs
 
     print(f"[Info] Found {len(GARMENT_INPUTS)} garment(s)")
-    print(f"[Info] Found {len(fabric_variants)} fabric variant(s)")
-    print(f"[Info] Planned {len(all_jobs)} garment/fabric/bending sample(s)")
+    print(f"[Info] Found {len(fabric_variants)} fabric(s)")
+    print(f"[Info] Planned {len(all_jobs)} fabric/body sample(s)")
     if MAX_SAMPLES > 0:
         print(f"[Info] Limit CLO processing to {len(jobs)} sample(s)")
 
@@ -1517,7 +1535,7 @@ def main(argv=None):
         print(f"  garment       : {job['garment_id']}")
         print(f"  garment zprj  : {job['garment_zprj']}")
         print(f"  fabric        : {variant['fabric_id']}")
-        print(f"  bend          : {variant['bend_id']}")
+        print(f"  variant       : {variant['bend_id']}")
         print(f"  source sample : {variant['source_sample_dir']}")
         print(f"  zfab          : {zfab_path}")
         print(f"  output        : {out_sample_dir}")

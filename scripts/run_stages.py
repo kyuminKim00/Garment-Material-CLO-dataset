@@ -14,10 +14,10 @@ CONFIG_JSON_PATH = r"C:\Users\CGnA\Desktop\CLO\dataset_config.json"
 def parse_args():
     parser = argparse.ArgumentParser(
         description=(
-            "Run dataset stages up to pipeline.run_until_stage from config. "
-            "Paste/run this inside CLO Python for stages 01 and 02; "
-            "stage 03 launches Blender in background mode; "
-            "stage 04 launches the Gaussian Splatting trainer."
+            "Run the exact dataset stages listed in pipeline.run_stages from config. "
+            "Paste/run this inside CLO Python for stage 01; "
+            "stage 02 launches Blender in background mode; "
+            "stage 03 launches the Gaussian Splatting trainer."
         )
     )
     parser.add_argument(
@@ -28,12 +28,12 @@ def parse_args():
     parser.add_argument(
         "--blender",
         default="",
-        help="Override pipeline.blender_executable for stage 03 rendering.",
+        help="Override pipeline.blender_executable for stage 02 rendering.",
     )
     parser.add_argument(
         "--python",
         default="",
-        help="Override pipeline.python_executable for stage 04 training launcher.",
+        help="Override pipeline.python_executable for stage 03 training launcher.",
     )
     parser.add_argument(
         "--dry-run",
@@ -60,15 +60,42 @@ def deep_get(obj, keys, default=None):
     return cur
 
 
-def get_run_until_stage(config):
-    stage = deep_get(config, ["pipeline", "run_until_stage"], 3)
+def parse_stage_value(value, source):
     try:
-        stage = int(stage)
+        stage = int(value)
     except (TypeError, ValueError) as exc:
-        raise ValueError("pipeline.run_until_stage must be an integer from 0 to 4") from exc
-    if stage < 0 or stage > 4:
-        raise ValueError("pipeline.run_until_stage must be an integer from 0 to 4")
+        raise ValueError(f"{source} must contain integers from 1 to 3") from exc
+    if stage < 1 or stage > 3:
+        raise ValueError(f"{source} must contain integers from 1 to 3")
     return stage
+
+
+def get_run_stages(config):
+    configured_stages = deep_get(config, ["pipeline", "run_stages"], None)
+    if configured_stages is not None:
+        if not isinstance(configured_stages, list):
+            raise ValueError("pipeline.run_stages must be a list like [1, 2, 3]")
+        stages = [
+            parse_stage_value(stage, "pipeline.run_stages")
+            for stage in configured_stages
+        ]
+        seen = set()
+        deduped = []
+        for stage in stages:
+            if stage in seen:
+                continue
+            seen.add(stage)
+            deduped.append(stage)
+        return deduped
+
+    run_until_stage = deep_get(config, ["pipeline", "run_until_stage"], 3)
+    try:
+        run_until_stage = int(run_until_stage)
+    except (TypeError, ValueError) as exc:
+        raise ValueError("pipeline.run_until_stage must be an integer from 0 to 3") from exc
+    if run_until_stage < 0 or run_until_stage > 3:
+        raise ValueError("pipeline.run_until_stage must be an integer from 0 to 3")
+    return list(range(1, run_until_stage + 1))
 
 
 def choose_cli_or_config(cli_value, config, key_path, default):
@@ -113,7 +140,7 @@ def main():
     config_path_obj = Path(args.config).expanduser().resolve()
     config = load_config(config_path_obj)
     config_path = str(config_path_obj)
-    run_until_stage = get_run_until_stage(config)
+    run_stages = get_run_stages(config)
     blender_executable = choose_cli_or_config(
         args.blender,
         config,
@@ -127,50 +154,45 @@ def main():
         "python",
     )
 
-    stage_03 = [
+    stage_02 = [
         blender_executable,
         "--background",
         "--python",
-        str(SCRIPT_DIR / "03_blender_render.py"),
+        str(SCRIPT_DIR / "02_blender_render.py"),
         "--",
         "--config",
         config_path,
     ]
-    stage_04 = [
+    stage_03 = [
         python_executable,
-        str(SCRIPT_DIR / "04_gs_train.py"),
+        str(SCRIPT_DIR / "03_gs_train.py"),
         "--config",
         config_path,
     ]
 
     print("=" * 80)
-    print(f"[Run stages] requested through stage {run_until_stage}")
+    print(f"[Run stages] requested stages: {run_stages}")
     print(f"[Config] {config_path}")
 
-    if run_until_stage >= 1:
-        run_python_script_in_current_process(
-            "01_fabric_bending",
-            SCRIPT_DIR / "01_clo_fab_sampler.py",
+    stage_actions = {
+        1: lambda: run_python_script_in_current_process(
+            "01_draped_garments",
+            SCRIPT_DIR / "01_clo_make_dataset.py",
             config_path,
             args.dry_run,
-        )
-    if run_until_stage >= 2:
-        run_python_script_in_current_process(
-            "02_draped_garments",
-            SCRIPT_DIR / "02_clo_make_dataset.py",
-            config_path,
-            args.dry_run,
-        )
-    if run_until_stage >= 3:
-        run_subprocess_step("03_blender_multiview", stage_03, args.dry_run)
-    if run_until_stage >= 4:
-        run_subprocess_step("04_3dgs", stage_04, args.dry_run)
+        ),
+        2: lambda: run_subprocess_step("02_blender_multiview", stage_02, args.dry_run),
+        3: lambda: run_subprocess_step("03_3dgs", stage_03, args.dry_run),
+    }
+
+    for stage in run_stages:
+        stage_actions[stage]()
 
     print("=" * 80)
-    if run_until_stage == 0:
+    if not run_stages:
         print("[Done] no dataset stages were run")
     else:
-        print(f"[Done] stages 01 through {run_until_stage:02d} completed")
+        print(f"[Done] completed requested stages: {run_stages}")
 
 
 if __name__ == "__main__":

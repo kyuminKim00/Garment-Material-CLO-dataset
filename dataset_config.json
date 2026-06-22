@@ -4,7 +4,9 @@
     "output_dir": "D:/KKM/CLO-dataset"
   },
   "pipeline": {
-    "run_until_stage": 2,
+    "run_stages": [
+      2, 3
+    ],
     "blender_executable": "blender",
     "python_executable": "python"
   },
@@ -15,14 +17,14 @@
   },
   "naming": {
     "fabric_dir": "01_fabric_bending",
-    "draped_dir": "02_draped_garments",
-    "render_dir": "03_blender_multiview",
-    "gs_dir": "04_3dgs",
+    "draped_dir": "01_draped_garments",
+    "render_dir": "02_blender_multiview",
+    "gs_dir": "03_3dgs",
     "fabric_variant_dir_template": "{fabric_id}/{bend_id}",
     "bend_dir_template": "bend_{index:03d}",
     "fabric_file_template": "fabric.zfab",
     "material_json_template": "material.json",
-    "sample_dir_template": "{garment_id}/{fabric_id}/{bend_id}",
+    "sample_dir_template": "{fabric_id}/{garment_id}",
     "draped_zprj_file": "draped_garment.zprj",
     "sample_summary_file": "summary.json",
     "obj_file": "obj.obj",
