@@ -12,6 +12,7 @@ import struct
 import zipfile
 import argparse
 import glob
+import hashlib
 import random
 from pathlib import Path
 from typing import Dict, List, Tuple, Any
@@ -292,6 +293,20 @@ def make_sample_pairs(
     if mode.lower() == "grid":
         return [(u, v) for u in vals for v in vals]
     raise ValueError('SAMPLE_MODE must be "paired" or "grid"')
+
+
+def derive_sample_seed(base_seed: int, *parts: Any) -> int:
+    """
+    Derive a deterministic per-entity seed from the configured base seed.
+
+    Python's built-in hash is process-randomized, so use a stable digest to
+    keep generated bending samples reproducible across CLO/Python sessions.
+    """
+    h = hashlib.sha256(str(int(base_seed)).encode("utf-8"))
+    for part in parts:
+        h.update(b"\0")
+        h.update(str(part).encode("utf-8"))
+    return int.from_bytes(h.digest()[:4], "little")
 
 # =============================================================================
 # binary patch utilities
@@ -1004,7 +1019,7 @@ def main(argv: List[str] = None):
     if not variant_dir_template and len(fabric_inputs) > 1:
         variant_dir_template = "{fabric_id}/{bend_id}"
 
-    pairs = make_sample_pairs(
+    base_pairs = make_sample_pairs(
         sample_count,
         sample_mode,
         sample_distribution,
@@ -1020,11 +1035,12 @@ def main(argv: List[str] = None):
         "fabric_inputs": fabric_inputs,
         "out_dir": out_dir,
         "requested_sample_count": sample_count,
-        "bend_count_per_fabric": len(pairs),
-        "sample_count": len(pairs) * len(fabric_inputs),
+        "bend_count_per_fabric": len(base_pairs),
+        "sample_count": len(base_pairs) * len(fabric_inputs),
         "sample_mode": sample_mode,
         "sample_distribution": sample_distribution,
         "sample_seed": sample_seed,
+        "sample_seed_scope": "per_fabric",
         "effective_ui_min": effective_ui_min,
         "effective_ui_curve": effective_ui_curve,
         "sample_bins": sample_bins,
@@ -1052,17 +1068,29 @@ def main(argv: List[str] = None):
     print("SEED      :", sample_seed)
     print("V2 RATIO  :", preserve_bending_v2_ratio)
     print("REQUESTED :", sample_count)
-    print("BENDS     :", len(pairs))
-    print("SAMPLES   :", len(pairs) * len(fabric_inputs))
+    print("SEED SCOPE:", "per_fabric")
+    print("BENDS     :", len(base_pairs))
+    print("SAMPLES   :", len(base_pairs) * len(fabric_inputs))
     print("=" * 80)
 
     sample_index = 0
     for fabric_idx, fabric in enumerate(fabric_inputs):
         fabric_id = safe_id(fabric["fabric_id"], f"fabric_{fabric_idx:03d}")
         input_zfab = fabric["zfab"]
+        fabric_sample_seed = derive_sample_seed(sample_seed, fabric_id)
+        pairs = make_sample_pairs(
+            sample_count,
+            sample_mode,
+            sample_distribution,
+            fabric_sample_seed,
+            effective_ui_min,
+            effective_ui_curve,
+            sample_bins,
+        )
         print("\n" + "=" * 80)
         print(f"[Fabric {fabric_idx+1}/{len(fabric_inputs)}] {fabric_id}")
         print("INPUT_ZFAB:", input_zfab)
+        print("SAMPLE_SEED:", fabric_sample_seed)
 
         for bend_idx, (ui_warp, ui_weft) in enumerate(pairs):
             ui_bias = (float(ui_warp) + float(ui_weft)) * 0.5
@@ -1130,6 +1158,9 @@ def main(argv: List[str] = None):
                 "bend_id": bend_id,
                 "fabric_index": fabric_idx,
                 "bend_index": bend_idx,
+                "sample_seed": fabric_sample_seed,
+                "base_sample_seed": sample_seed,
+                "sample_seed_scope": "per_fabric",
                 "source_zfab": input_zfab,
                 "output_zfab": out_zfab,
                 "ui": {
@@ -1163,6 +1194,9 @@ def main(argv: List[str] = None):
                 "sample_index": sample_index,
                 "fabric_index": fabric_idx,
                 "bend_index": bend_idx,
+                "sample_seed": fabric_sample_seed,
+                "base_sample_seed": sample_seed,
+                "sample_seed_scope": "per_fabric",
                 "sample_id": sample_id,
                 "fabric_id": fabric_id,
                 "bend_id": bend_id,
