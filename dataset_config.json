@@ -1,7 +1,7 @@
 {
   "project": {
     "name": "CLO garment dataset",
-    "output_dir": "dataset"
+    "output_dir": "example"
   },
   "pipeline": {
     "run_stages": [

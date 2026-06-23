@@ -7,7 +7,7 @@ from pathlib import Path
 
 SCRIPT_PATH = Path(__file__).resolve()
 REPO_ROOT = SCRIPT_PATH.parent.parent
-DEFAULT_CONFIG_PATH = REPO_ROOT / "dataset_config.json"
+DEFAULT_CONFIG_PATH = Path(r"C:\Users\CGnA\Desktop\CLO\dataset_config.json")
 
 
 def load_config(path):
@@ -25,6 +25,13 @@ def deep_get(obj, keys, default=None):
             return default
         cur = cur[key]
     return cur
+
+
+def require_config_value(config, keys):
+    value = deep_get(config, keys, "")
+    if value in (None, ""):
+        raise ValueError(f"{'.'.join(keys)} is required in the config")
+    return value
 
 
 def parse_bool(value, default=False):
@@ -287,8 +294,8 @@ def main():
         raise ValueError("project.output_dir is required")
 
     output_root = resolve_path(output_root, config_dir)
-    render_root = output_root / deep_get(config, ["naming", "render_dir"], "03_blender_multiview")
-    gs_root = output_root / deep_get(config, ["naming", "gs_dir"], "04_3dgs")
+    render_root = output_root / require_config_value(config, ["naming", "render_dir"])
+    gs_root = output_root / require_config_value(config, ["naming", "gs_dir"])
 
     gs_repo_value = deep_get(config, ["3dgs_training", "gaussian_splatting_dir"], "")
     if not gs_repo_value:

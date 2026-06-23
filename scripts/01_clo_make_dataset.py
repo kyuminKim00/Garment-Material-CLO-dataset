@@ -50,12 +50,12 @@ except Exception as e:
 
 # A-pose avatar + garment가 들어있는 base project
 # 매 sample마다 이걸 다시 열어서 초기 상태를 동일하게 맞춤.
-FALLBACK_SCRIPT_FILE = r"C:\Users\CGnA\Desktop\CLO\scripts\clo_make_dataset.py"
-SCRIPT_FILE = globals().get("__file__", FALLBACK_SCRIPT_FILE)
-if not SCRIPT_FILE or str(SCRIPT_FILE).startswith("<") or not os.path.exists(SCRIPT_FILE):
-    SCRIPT_FILE = FALLBACK_SCRIPT_FILE
-SCRIPT_DIR = os.path.abspath(os.path.join(os.path.dirname(SCRIPT_FILE), ".."))
 CONFIG_JSON_PATH = r"C:\Users\CGnA\Desktop\CLO\dataset_config.json"
+CONFIG_DIR = os.path.dirname(CONFIG_JSON_PATH)
+SCRIPT_FILE = globals().get("__file__", "")
+if not SCRIPT_FILE or str(SCRIPT_FILE).startswith("<") or not os.path.exists(SCRIPT_FILE):
+    SCRIPT_FILE = os.path.join(CONFIG_DIR, "scripts", "01_clo_make_dataset.py")
+SCRIPT_DIR = os.path.abspath(os.path.join(os.path.dirname(SCRIPT_FILE), ".."))
 if SCRIPT_DIR not in sys.path:
     sys.path.insert(0, SCRIPT_DIR)
 CLO_EXPORT_OBJ_FILE = os.path.join(SCRIPT_DIR, "utils", "clo_export_obj.py")
@@ -80,14 +80,14 @@ GARMENT_INPUTS = []
 
 # 이전 코드로 만든 10개 fabric sample 폴더
 # 각 하위 폴더에 .zfab과 material.json이 있다고 가정
-FABRIC_SAMPLE_ROOT = os.path.join(SCRIPT_DIR, "bending_zfab_samples")
+FABRIC_SAMPLE_ROOT = ""
 
 # simulation/export 결과 저장 위치
-OUT_DIR = os.path.join(SCRIPT_DIR, "clo_obj_dataset")
-GS_DIR = os.path.join(SCRIPT_DIR, "05_3dgs")
-SAMPLE_DIR_TEMPLATE = "{index:03d}_{fabric_stem}"
-DRAPED_ZPRJ_FILE_NAME = "draped_garment.zprj"
-SAMPLE_SUMMARY_FILE_NAME = "summary.json"
+OUT_DIR = ""
+GS_DIR = ""
+SAMPLE_DIR_TEMPLATE = ""
+DRAPED_ZPRJ_FILE_NAME = ""
+SAMPLE_SUMMARY_FILE_NAME = ""
 DATASET_SUMMARY_JSON = ""
 
 # render 설정
@@ -109,7 +109,7 @@ SKIP_RENDER = True
 
 # Simulation 후 garment OBJ bundle(.obj, .mtl, textures)을 export.
 EXPORT_OBJ = True
-OBJ_FILE_NAME = "obj.obj"
+OBJ_FILE_NAME = ""
 OBJ_EXPORT_FUNCTION_NAMES = [
     "ExportOBJW",
 ]
@@ -227,6 +227,15 @@ def resolve_config_path(path, output_root=""):
     resolved = os.path.expanduser(str(path))
     if not os.path.isabs(resolved) and output_root:
         resolved = os.path.join(output_root, resolved)
+    return os.path.abspath(resolved)
+
+
+def resolve_path_from_base(path, base_dir):
+    if path is None or str(path).strip() == "":
+        return ""
+    resolved = os.path.expanduser(str(path))
+    if not os.path.isabs(resolved) and base_dir:
+        resolved = os.path.join(base_dir, resolved)
     return os.path.abspath(resolved)
 
 
@@ -367,7 +376,7 @@ def parse_args(argv):
     return args
 
 
-def apply_config(config, args):
+def apply_config(config, args, config_dir=""):
     global BASE_ZPRJ_PATH, GARMENT_INPUTS, FABRIC_SAMPLE_ROOT, OUT_DIR, GS_DIR
     global SAMPLE_DIR_TEMPLATE, DRAPED_ZPRJ_FILE_NAME, SAMPLE_SUMMARY_FILE_NAME
     global DATASET_SUMMARY_JSON
@@ -389,7 +398,7 @@ def apply_config(config, args):
         or deep_get(config, ["paths", "root_dir"])
         or ""
     )
-    output_root = os.path.abspath(os.path.expanduser(output_root)) if output_root else ""
+    output_root = resolve_path_from_base(output_root, config_dir) if output_root else ""
 
     BASE_ZPRJ_PATH = (
         args.base_zprj
@@ -421,8 +430,7 @@ def apply_config(config, args):
         or deep_get(config, ["stage_1_fabric_sampler", "outputs", "fabric_dir"])
         or deep_get(config, ["clo", "fabric_sample_root"])
         or deep_get(config, ["paths", "zfab_output_dir"])
-        or (os.path.join(output_root, deep_get(config, ["naming", "fabric_dir"], "01_fabric_bending")) if output_root else "")
-        or (os.path.join(output_root, "bending_zfab_samples") if output_root else "")
+        or (os.path.join(output_root, deep_get(config, ["naming", "fabric_dir"], "")) if output_root and deep_get(config, ["naming", "fabric_dir"], "") else "")
         or FABRIC_SAMPLE_ROOT
     )
     OUT_DIR = (
@@ -430,14 +438,13 @@ def apply_config(config, args):
         or deep_get(config, ["stage_2_clo_simulation", "outputs", "draped_dir"])
         or deep_get(config, ["clo", "output_dir"])
         or deep_get(config, ["paths", "clo_output_dir"])
-        or (os.path.join(output_root, deep_get(config, ["naming", "draped_dir"], "02_draped_garments")) if output_root else "")
-        or (os.path.join(output_root, "clo_obj_dataset") if output_root else "")
+        or (os.path.join(output_root, deep_get(config, ["naming", "draped_dir"], "")) if output_root and deep_get(config, ["naming", "draped_dir"], "") else "")
         or OUT_DIR
     )
     GS_DIR = (
         deep_get(config, ["stage_5_3dgs_training", "outputs", "gs_dir"])
         or deep_get(config, ["3dgs_training", "output_dir"])
-        or (os.path.join(output_root, deep_get(config, ["naming", "gs_dir"], "05_3dgs")) if output_root else "")
+        or (os.path.join(output_root, deep_get(config, ["naming", "gs_dir"], "")) if output_root and deep_get(config, ["naming", "gs_dir"], "") else "")
         or GS_DIR
     )
     SAMPLE_DIR_TEMPLATE = str(
@@ -654,6 +661,10 @@ def get_generated_material_json_path(sample_dir, zfab_path):
     return os.path.join(sample_dir, "material.json")
 
 
+def get_output_fabric_material_json_path(out_dir, fabric_id):
+    return os.path.join(out_dir, safe_name(fabric_id), "material.json")
+
+
 def sha256_file(path):
     h = hashlib.sha256()
     with open(path, "rb") as f:
@@ -703,11 +714,11 @@ def scan_fields_in_fab(data, field_names):
     return result
 
 
-def first_scanned_value(field_scans, field_names):
+def last_scanned_value(field_scans, field_names):
     for field in field_names:
         values = field_scans.get(field, [])
         if values:
-            return values[0].get("value_float_le")
+            return values[-1].get("value_float_le")
     return None
 
 
@@ -718,6 +729,20 @@ def flatten_zfab_field_scans(fab_scans):
             if values and field not in flattened:
                 flattened[field] = values
     return flattened
+
+
+def clean_empty_values(value):
+    if isinstance(value, dict):
+        cleaned = {
+            key: clean_empty_values(item)
+            for key, item in value.items()
+        }
+        return {
+            key: item
+            for key, item in cleaned.items()
+            if item is not None and item != {}
+        }
+    return value
 
 
 def build_material_gt_from_zfab(sample_dir, zfab_path, fabric_id, bend_id, sample_id):
@@ -739,36 +764,35 @@ def build_material_gt_from_zfab(sample_dir, zfab_path, fabric_id, bend_id, sampl
     flat_scan = flatten_zfab_field_scans(fab_scans)
     selected = {
         group: {
-            field: first_scanned_value(flat_scan, [field])
+            field: last_scanned_value(flat_scan, [field])
             for field in fields
-            if first_scanned_value(flat_scan, [field]) is not None
+            if last_scanned_value(flat_scan, [field]) is not None
         }
         for group, fields in field_groups.items()
     }
+    density = last_scanned_value(flat_scan, ["fDensity"])
     actual = {
-        "stretch_warp": first_scanned_value(flat_scan, ["fSuK"]),
-        "stretch_weft": first_scanned_value(flat_scan, ["fSvK"]),
-        "shear_left": first_scanned_value(flat_scan, ["fLeftShearK", "fLeftShearK_v2"]),
-        "shear_right": first_scanned_value(flat_scan, ["fRightShearK_v2"]),
-        "shear": first_scanned_value(flat_scan, ["fHK"]),
-        "bending_warp": first_scanned_value(flat_scan, ["fBuK"]),
-        "bending_warp_v2": first_scanned_value(flat_scan, ["fBuK_v2"]),
-        "bending_weft": first_scanned_value(flat_scan, ["fBvK"]),
-        "bending_weft_v2": first_scanned_value(flat_scan, ["fBvK_v2"]),
-        "bending_bias": first_scanned_value(flat_scan, ["fBhK"]),
-        "bending_bias_v2": first_scanned_value(flat_scan, ["fBhK_v2"]),
-        "bending_left_shear": first_scanned_value(flat_scan, ["fBLeftShearK"]),
-        "bending_left_shear_v2": first_scanned_value(flat_scan, ["fBLeftShearK_v2"]),
-        "bending_right_shear": first_scanned_value(flat_scan, ["fBRightShearK"]),
-        "bending_right_shear_v2": first_scanned_value(flat_scan, ["fBRightShearK_v2"]),
-        "buckling_warp": first_scanned_value(flat_scan, ["fBucklingStiffnessU"]),
-        "buckling_weft": first_scanned_value(flat_scan, ["fBucklingStiffnessV"]),
-        "buckling_bias": first_scanned_value(flat_scan, ["fBucklingStiffnessH"]),
-        "density": first_scanned_value(flat_scan, ["fDensity"]),
-        "thickness": first_scanned_value(flat_scan, ["fThickness"]),
-        "friction": first_scanned_value(flat_scan, ["fFriction"]),
+        "stretch": {
+            "warp": last_scanned_value(flat_scan, ["fSuK"]),
+            "weft": last_scanned_value(flat_scan, ["fSvK"]),
+        },
+        "shear": last_scanned_value(flat_scan, ["fRightShearK_v2", "fLeftShearK_v2", "fHK"]),
+        "bending": {
+            "warp": last_scanned_value(flat_scan, ["fBuK_v2", "fBuK"]),
+            "weft": last_scanned_value(flat_scan, ["fBvK_v2", "fBvK"]),
+            "bias": last_scanned_value(flat_scan, ["fBRightShearK_v2", "fBLeftShearK_v2", "fBhK_v2", "fBhK"]),
+        },
+        "buckling": {
+            "warp": last_scanned_value(flat_scan, ["fBucklingStiffnessU"]),
+            "weft": last_scanned_value(flat_scan, ["fBucklingStiffnessV"]),
+            "bias": last_scanned_value(flat_scan, ["fBucklingStiffnessH"]),
+        },
+        "density": density,
+        "weight": round(density * 1000000.0, 6) if density is not None else None,
+        "thickness": last_scanned_value(flat_scan, ["fThickness"]),
+        "friction": last_scanned_value(flat_scan, ["fFriction"]),
     }
-    actual = {k: v for k, v in actual.items() if v is not None}
+    actual = clean_empty_values(actual)
 
     return {
         "sample_id": sample_id,
@@ -786,7 +810,6 @@ def build_material_gt_from_zfab(sample_dir, zfab_path, fabric_id, bend_id, sampl
             "field_groups": field_groups,
             "selected_values": selected,
             "fab_files": list(fab_scans.keys()),
-            "scans": fab_scans,
         },
     }
 
@@ -1624,12 +1647,10 @@ def prepare_garment_only_render():
 
 def main(argv=None):
     args = parse_args(sys.argv[1:] if argv is None else argv)
-    default_config = os.path.join(os.path.dirname(SCRIPT_FILE), "dataset_pipeline_config.json")
     config_path = args.config or os.environ.get("CLO_DATASET_CONFIG", "") or CONFIG_JSON_PATH
-    if not config_path and os.path.exists(default_config):
-        config_path = default_config
+    config_path = os.path.abspath(os.path.expanduser(config_path))
     config = load_config(config_path)
-    apply_config(config, args)
+    apply_config(config, args, os.path.dirname(config_path))
     ensure_clo_api()
 
     os.makedirs(OUT_DIR, exist_ok=True)
@@ -1670,7 +1691,15 @@ def main(argv=None):
         "garments": GARMENT_INPUTS,
         "fabric_sample_root": FABRIC_SAMPLE_ROOT,
         "fabric_variants": [
-            {k: v for k, v in item.items() if k not in ("material_data",)}
+            {
+                k: (
+                    get_output_fabric_material_json_path(OUT_DIR, item["fabric_id"])
+                    if k == "material_json"
+                    else v
+                )
+                for k, v in item.items()
+                if k not in ("material_data",)
+            }
             for item in fabric_variants
         ],
         "out_dir": OUT_DIR,
@@ -1708,11 +1737,13 @@ def main(argv=None):
         "samples": []
     }
 
+    output_materials_written = set()
+
     for sample_idx, job in enumerate(jobs):
         variant = job["fabric_variant"]
         sample_name = job["sample_id"]
         zfab_path = variant["zfab_path"]
-        material_src = variant["material_json"]
+        fabric_material_path = get_output_fabric_material_json_path(OUT_DIR, variant["fabric_id"])
 
         safe_sample_name = safe_name(sample_name)
         out_sample_dir_name = format_stage_template(
@@ -1803,13 +1834,30 @@ def main(argv=None):
                 sim_zprj_path = planned_draped_zprj_path
                 export_sim_zprj(sim_zprj_path)
 
-            # 6. material.json 복사
-            material_dst = None
+            # 6. fabric-level material metadata
+            material_dst = fabric_material_path
             material_data = None
             material_json_error = None
-            if material_src is not None:
-                material_dst = os.path.join(out_sample_dir, "material.json")
-                copy_file(material_src, material_dst)
+            stale_sample_material_path = os.path.join(out_sample_dir, "material.json")
+            if os.path.exists(stale_sample_material_path) and os.path.abspath(stale_sample_material_path) != os.path.abspath(material_dst):
+                os.remove(stale_sample_material_path)
+            material_key = os.path.normcase(os.path.abspath(material_dst))
+            if material_key not in output_materials_written:
+                try:
+                    material_data = build_material_gt_from_zfab(
+                        variant["source_sample_dir"],
+                        zfab_path,
+                        variant["fabric_id"],
+                        variant["bend_id"],
+                        variant["sample_id"],
+                    )
+                    os.makedirs(os.path.dirname(material_dst), exist_ok=True)
+                    write_json(material_dst, material_data)
+                    output_materials_written.add(material_key)
+                except Exception as e:
+                    material_json_error = str(e)
+                    print(f"[Warning] material.json generation failed:\n{material_json_error}")
+            if material_data is None and os.path.exists(material_dst):
                 material_data, material_json_error = try_read_json(material_dst)
                 if material_json_error:
                     print(f"[Warning] material.json parse failed:\n{material_json_error}")

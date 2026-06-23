@@ -1,12 +1,12 @@
 # MTL Exporter v1.0 by Seungwoo Oh at CLO - Virtual Fashion Inc.
-newmtl base0_FRONT_1306920
+newmtl base0_FRONT_6235615
 Ka 0.257132 0.257132 0.257132
 Kd 1.000000 1.000000 1.000000
 Ks 0.000000 0.000000 0.000000
 Ns 2.000000
 illum 2
 d 1.000000
-map_Ka D:/KKM/CLO-dataset/01_draped_garments/base0/f_ovw/Cut _ Sew Knit_Velvet_3_BASE_rgb_medium.png
-map_Kd D:/KKM/CLO-dataset/01_draped_garments/base0/f_ovw/Cut _ Sew Knit_Velvet_3_BASE_rgb_medium.png
-map_bump D:/KKM/CLO-dataset/01_draped_garments/base0/f_ovw/Cut _ Sew Knit_Velvet_3_NRM.png
-map_bump C:/Users/CGnA/AppData/Local/CLO Virtual Fashion/CLO Standalone OnlineAuth/31104/1763/Cut _ Sew Knit_Velvet_3_NRM_3.png
+map_Ka C:/Users/CGnA/Desktop/CLO/example/01_draped_garments/base0/f_ovw/Cut _ Sew Knit_Velvet_3_BASE_rgb_medium.png
+map_Kd C:/Users/CGnA/Desktop/CLO/example/01_draped_garments/base0/f_ovw/Cut _ Sew Knit_Velvet_3_BASE_rgb_medium.png
+map_bump C:/Users/CGnA/Desktop/CLO/example/01_draped_garments/base0/f_ovw/Cut _ Sew Knit_Velvet_3_NRM.png
+map_bump C:/Users/CGnA/AppData/Local/CLO Virtual Fashion/CLO Standalone OnlineAuth/14100/1697/Cut _ Sew Knit_Velvet_3_NRM_3.png

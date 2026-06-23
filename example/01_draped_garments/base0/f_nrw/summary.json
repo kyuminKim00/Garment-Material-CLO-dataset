@@ -5,19 +5,19 @@
   "body_id": "f_nrw",
   "fabric_id": "base0",
   "bend_id": "original",
-  "garment_zprj": "D:\\KKM\\CLO-dataset\\input\\garments\\f_nrw.zprj",
-  "source_sample_dir": "D:\\KKM\\CLO-dataset\\input\\fabrics\\base0.zfab",
-  "zfab_path": "D:\\KKM\\CLO-dataset\\input\\fabrics\\base0.zfab",
-  "output_dir": "D:\\KKM\\CLO-dataset\\01_draped_garments\\base0/f_nrw",
+  "garment_zprj": "C:\\Users\\CGnA\\Desktop\\CLO\\example\\input\\garments\\f_nrw.zprj",
+  "source_sample_dir": "C:\\Users\\CGnA\\Desktop\\CLO\\example\\input\\fabrics\\base0.zfab",
+  "zfab_path": "C:\\Users\\CGnA\\Desktop\\CLO\\example\\input\\fabrics\\base0.zfab",
+  "output_dir": "C:\\Users\\CGnA\\Desktop\\CLO\\example\\01_draped_garments\\base0/f_nrw",
   "output_files": {
     "draped_zprj": null,
-    "obj_dir": "D:\\KKM\\CLO-dataset\\01_draped_garments\\base0/f_nrw",
-    "gs_dir": "D:\\KKM\\CLO-dataset\\03_3dgs\\base0/f_nrw",
-    "sample_summary_json": "D:\\KKM\\CLO-dataset\\01_draped_garments\\base0/f_nrw\\summary.json",
-    "material_json": null,
+    "obj_dir": "C:\\Users\\CGnA\\Desktop\\CLO\\example\\01_draped_garments\\base0/f_nrw",
+    "gs_dir": "C:\\Users\\CGnA\\Desktop\\CLO\\example\\03_3dgs\\base0/f_nrw",
+    "sample_summary_json": "C:\\Users\\CGnA\\Desktop\\CLO\\example\\01_draped_garments\\base0/f_nrw\\summary.json",
+    "material_json": "C:\\Users\\CGnA\\Desktop\\CLO\\example\\01_draped_garments\\base0\\material.json",
     "images_dir": null,
-    "obj": "D:\\KKM\\CLO-dataset\\01_draped_garments\\base0\\f_nrw\\obj.obj",
-    "mtl": "D:\\KKM\\CLO-dataset\\01_draped_garments\\base0\\f_nrw\\obj.mtl",
+    "obj": "C:\\Users\\CGnA\\Desktop\\CLO\\example\\01_draped_garments\\base0\\f_nrw\\obj.obj",
+    "mtl": "C:\\Users\\CGnA\\Desktop\\CLO\\example\\01_draped_garments\\base0\\f_nrw\\obj.mtl",
     "diffuse": null,
     "normal": null
   },
@@ -25,17 +25,17 @@
   "added_fabric_index": 1,
   "pattern_count": 5,
   "obj_export": {
-    "obj_path": "D:\\KKM\\CLO-dataset\\01_draped_garments\\base0\\f_nrw\\obj.obj",
-    "mtl_path": "D:\\KKM\\CLO-dataset\\01_draped_garments\\base0\\f_nrw\\obj.mtl",
+    "obj_path": "C:\\Users\\CGnA\\Desktop\\CLO\\example\\01_draped_garments\\base0\\f_nrw\\obj.obj",
+    "mtl_path": "C:\\Users\\CGnA\\Desktop\\CLO\\example\\01_draped_garments\\base0\\f_nrw\\obj.mtl",
     "diffuse_path": null,
     "normal_path": null,
     "files": [
-      "D:\\KKM\\CLO-dataset\\01_draped_garments\\base0\\f_nrw\\obj.obj",
-      "D:\\KKM\\CLO-dataset\\01_draped_garments\\base0\\f_nrw\\obj.mtl"
+      "C:\\Users\\CGnA\\Desktop\\CLO\\example\\01_draped_garments\\base0\\f_nrw\\obj.obj",
+      "C:\\Users\\CGnA\\Desktop\\CLO\\example\\01_draped_garments\\base0\\f_nrw\\obj.mtl"
     ],
     "export_function": "ExportOBJW",
     "export_signature": "path_import_export_option",
-    "raw_result": "['D:/KKM/CLO-dataset/01_draped_garments/base0/f_nrw/obj.obj', 'D:/KKM/CLO-dataset/01_draped_garments/base0/f_nrw/obj.mtl']",
+    "raw_result": "['C:/Users/CGnA/Desktop/CLO/example/01_draped_garments/base0/f_nrw/obj.obj', 'C:/Users/CGnA/Desktop/CLO/example/01_draped_garments/base0/f_nrw/obj.mtl']",
     "import_export_option": {
       "set": {
         "bExportGarment": true,
@@ -62,14 +62,14 @@
     },
     "post_processing": "none"
   },
-  "obj_path": "D:\\KKM\\CLO-dataset\\01_draped_garments\\base0\\f_nrw\\obj.obj",
-  "mtl_path": "D:\\KKM\\CLO-dataset\\01_draped_garments\\base0\\f_nrw\\obj.mtl",
+  "obj_path": "C:\\Users\\CGnA\\Desktop\\CLO\\example\\01_draped_garments\\base0\\f_nrw\\obj.obj",
+  "mtl_path": "C:\\Users\\CGnA\\Desktop\\CLO\\example\\01_draped_garments\\base0\\f_nrw\\obj.mtl",
   "diffuse_path": null,
   "normal_path": null,
   "num_rendered_images": 0,
   "rendered_images": [],
   "sim_zprj_path": null,
-  "material_json": null,
+  "material_json": "C:\\Users\\CGnA\\Desktop\\CLO\\example\\01_draped_garments\\base0\\material.json",
   "material_json_error": null,
   "label_4d": null
 }

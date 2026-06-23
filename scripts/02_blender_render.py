@@ -10,16 +10,14 @@ from pathlib import Path
 import bpy
 from mathutils import Matrix, Vector
 
-
-CONFIG_JSON_PATH = Path(r"/home/cgna/km/Garment-Material-CLO-dataset/dataset_config.json")
-
-SCRIPT_PATH = Path(__file__).resolve()
+CONFIG_JSON_PATH = Path(r"C:\Users\CGnA\Desktop\CLO\dataset_config.json")
+SCRIPT_PATH = Path(globals().get("__file__", CONFIG_JSON_PATH.parent / "scripts" / "02_blender_render.py")).resolve()
 SCRIPT_DIR = SCRIPT_PATH.parent
 
 repo_candidates = [
     SCRIPT_DIR,
     SCRIPT_DIR.parent,
-    Path(r"C:\Users\CGnA\Desktop\CLO"),
+    CONFIG_JSON_PATH.expanduser().resolve().parent,
 ]
 
 REPO_ROOT = next(
@@ -60,6 +58,20 @@ def deep_get(obj, keys, default=None):
     return cur
 
 
+def require_config_value(config, keys):
+    value = deep_get(config, keys, "")
+    if value in (None, ""):
+        raise ValueError(f"{'.'.join(keys)} is required in the config")
+    return value
+
+
+def resolve_path(value, base_dir):
+    path = Path(value).expanduser()
+    if not path.is_absolute():
+        path = base_dir / path
+    return path.resolve()
+
+
 def choose(cli_value, config, keys, default=None):
     if cli_value not in (None, ""):
         return cli_value
@@ -84,8 +96,8 @@ def format_template(template, **values):
 
 
 def derived_sample_dir_name(config, sample_index):
-    fabric_template = deep_get(config, ["naming", "fabric_file_template"], "base_{index:03d}.zfab")
-    sample_template = deep_get(config, ["naming", "sample_dir_template"], "{index:03d}_{fabric_stem}")
+    fabric_template = require_config_value(config, ["naming", "fabric_file_template"])
+    sample_template = require_config_value(config, ["naming", "sample_dir_template"])
     fabric_name = format_template(fabric_template, index=sample_index, index1=sample_index + 1)
     fabric_stem = Path(fabric_name).stem
     return format_template(
@@ -1082,21 +1094,21 @@ def write_pipeline_summary(path, summary):
 def main():
     args = parse_args()
 
-    config = load_config(args.config or CONFIG_JSON_PATH)
+    config_path = Path(args.config or CONFIG_JSON_PATH).expanduser().resolve()
+    config = load_config(config_path)
+    config_dir = config_path.parent
     output_root = (
         deep_get(config, ["project", "output_dir"])
         or deep_get(config, ["project", "dataset_root"])
         or ""
     )
-    output_root_path = Path(output_root).expanduser() if output_root else Path(".")
+    if not output_root:
+        raise ValueError("project.output_dir is required in the config")
+    output_root_path = resolve_path(output_root, config_dir)
 
-    obj_root = output_root_path / deep_get(config, ["naming", "draped_dir"], "02_draped_garments")
-    render_root = output_root_path / deep_get(config, ["naming", "render_dir"], "04_blender_multiview")
-    obj_file_name = deep_get(
-        config,
-        ["naming", "obj_file"],
-        "obj.obj",
-    )
+    obj_root = output_root_path / require_config_value(config, ["naming", "draped_dir"])
+    render_root = output_root_path / require_config_value(config, ["naming", "render_dir"])
+    obj_file_name = require_config_value(config, ["naming", "obj_file"])
 
     render_all_samples = parse_bool(
         choose(
