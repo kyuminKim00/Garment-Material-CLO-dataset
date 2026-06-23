@@ -1,11 +1,11 @@
 {
   "project": {
     "name": "CLO garment dataset",
-    "output_dir": "example"
+    "output_dir": "dataset"
   },
   "pipeline": {
     "run_stages": [
-      2, 3
+      2, 3, 4
     ],
     "blender_executable": "blender",
     "python_executable": "python"
@@ -18,8 +18,9 @@
   "naming": {
     "fabric_dir": "01_fabric_bending",
     "draped_dir": "01_draped_garments",
-    "render_dir": "02_blender_multiview",
-    "gs_dir": "03_3dgs",
+    "body_proxy_dir": "02_body_proxy_gt",
+    "render_dir": "03_blender_multiview",
+    "gs_dir": "04_3dgs",
     "fabric_variant_dir_template": "{fabric_id}/{bend_id}",
     "bend_dir_template": "bend_{index:03d}",
     "fabric_file_template": "fabric.zfab",
@@ -86,6 +87,26 @@
     "save_sim_zprj": false,
     "skip_render": true,
     "export_obj": true
+  },
+  "body_proxy_gt": {
+    "enabled": true,
+    "output_dir": "02_body_proxy_gt",
+    "body_dir_template": "{body_id}",
+    "avatar_obj_file": "avatar.obj",
+    "avatar_meta_file": "avatar_meta.json",
+    "proxy_dir": "proxy",
+    "proxy_json_file": "body_proxy_gt.json",
+    "proxy_tensor_file": "body_proxy_tensor.npy",
+    "proxy_png_dir": "slices_png",
+    "export_scale": 0.01,
+    "num_slices": 10,
+    "top_k": 4,
+    "slice_min": 0.08,
+    "slice_max": 0.88,
+    "png_size": 768,
+    "reuse_existing": true,
+    "stop_on_first_failure": true,
+    "python_executable": "python"
   },
   "blender_render": {
     "render_all_samples": true,

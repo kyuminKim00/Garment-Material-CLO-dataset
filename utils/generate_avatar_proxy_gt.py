@@ -270,34 +270,30 @@ def draw_slice_png(path, segments, components, y_norm, y_abs, xlim, zlim, size=7
     img.save(path)
 
 
-def main():
-    parser = argparse.ArgumentParser(
-        description="Generate multi-component vertical support proxy GT from an avatar OBJ."
-    )
-    parser.add_argument("--obj", required=True, help="Path to avatar OBJ.")
-    parser.add_argument("--out_dir", required=True, help="Output directory.")
-    parser.add_argument("--num_slices", type=int, default=32, help="Number of y-normalized slices.")
-    parser.add_argument("--top_k", type=int, default=4, help="Max components per slice.")
-    parser.add_argument(
-        "--slice_min",
-        type=float,
-        default=0.02,
-        help="Lowest normalized y slice. Avoids unstable foot boundary.",
-    )
-    parser.add_argument(
-        "--slice_max",
-        type=float,
-        default=0.98,
-        help="Highest normalized y slice. Avoids unstable head boundary.",
-    )
-    parser.add_argument("--png_size", type=int, default=768)
-    args = parser.parse_args()
+def generate_body_proxy_gt(
+    obj_path,
+    out_dir,
+    num_slices=10,
+    top_k=4,
+    slice_min=0.08,
+    slice_max=0.88,
+    png_size=768,
+    json_file_name="body_proxy_gt.json",
+    tensor_file_name="body_proxy_tensor.npy",
+    png_dir_name="slices_png",
+):
+    if num_slices <= 0:
+        raise RuntimeError("--num_slices must be positive.")
+    if not (0.0 <= slice_min < slice_max <= 1.0):
+        raise RuntimeError("--slice_min and --slice_max must satisfy 0 <= min < max <= 1.")
 
-    os.makedirs(args.out_dir, exist_ok=True)
-    png_dir = os.path.join(args.out_dir, "slices_png")
+    out_dir = os.path.abspath(out_dir)
+    obj_path = os.path.abspath(obj_path)
+    os.makedirs(out_dir, exist_ok=True)
+    png_dir = os.path.join(out_dir, png_dir_name)
     os.makedirs(png_dir, exist_ok=True)
 
-    vertices, faces = parse_obj(args.obj)
+    vertices, faces = parse_obj(obj_path)
     if len(vertices) == 0 or len(faces) == 0:
         raise RuntimeError("OBJ must contain vertices and faces.")
 
@@ -315,7 +311,7 @@ def main():
     max_range = float(max(bbox_max - bbox_min))
     snap_tol = max_range * 1e-5
 
-    y_norm_values = np.linspace(args.slice_min, args.slice_max, args.num_slices)
+    y_norm_values = np.linspace(slice_min, slice_max, num_slices)
     slices = []
     tensor_rows = []
     tensor_feature_names = [
@@ -336,7 +332,7 @@ def main():
         y_abs = float(bbox_min[1] + y_norm * height)
         segments = slice_segments(vertices, faces, y_abs)
         components = cluster_segments(segments, snap_tol=snap_tol)
-        padded = pad_components(components, args.top_k)
+        padded = pad_components(components, top_k)
         tensor_slice = []
         for c in padded:
             tensor_slice.append(
@@ -367,7 +363,7 @@ def main():
             y_abs,
             xlim,
             zlim,
-            size=args.png_size,
+            size=png_size,
         )
 
         slices.append(
@@ -378,12 +374,12 @@ def main():
                 "num_segments": int(len(segments)),
                 "num_components_raw": int(len(components)),
                 "components_top_k": padded,
-                "png": os.path.relpath(png_path, args.out_dir),
+                "png": os.path.relpath(png_path, out_dir),
             }
         )
 
     gt = {
-        "source_obj": os.path.abspath(args.obj),
+        "source_obj": obj_path,
         "representation": "part-free multi-component vertical support profile",
         "coordinate_convention": {
             "height_axis": "y",
@@ -396,9 +392,12 @@ def main():
         "metadata": {
             "num_vertices": int(len(vertices)),
             "num_triangles": int(len(faces)),
-            "num_slices": int(args.num_slices),
-            "top_k_components": int(args.top_k),
-            "tensor_shape": [int(args.num_slices), int(args.top_k), len(tensor_feature_names)],
+            "num_slices": int(num_slices),
+            "slice_min": float(slice_min),
+            "slice_max": float(slice_max),
+            "slice_policy": "uniform y-normalized slices; feet and head are skipped by default",
+            "top_k_components": int(top_k),
+            "tensor_shape": [int(num_slices), int(top_k), len(tensor_feature_names)],
             "tensor_feature_names": tensor_feature_names,
             "height_abs": height,
             "bbox_min": bbox_min.tolist(),
@@ -408,16 +407,62 @@ def main():
         "slices": slices,
     }
 
-    json_path = os.path.join(args.out_dir, "body_proxy_gt.json")
+    json_path = os.path.join(out_dir, json_file_name)
     with open(json_path, "w", encoding="utf-8") as f:
         json.dump(gt, f, indent=2)
 
-    tensor_path = os.path.join(args.out_dir, "body_proxy_tensor.npy")
+    tensor_path = os.path.join(out_dir, tensor_file_name)
     np.save(tensor_path, np.asarray(tensor_rows, dtype=np.float32))
 
     print(f"[OK] wrote {json_path}")
     print(f"[OK] wrote {tensor_path}")
     print(f"[OK] wrote {len(slices)} slice PNGs to {png_dir}")
+    return {
+        "json_path": json_path,
+        "tensor_path": tensor_path,
+        "png_dir": png_dir,
+        "num_slices": int(num_slices),
+        "top_k": int(top_k),
+    }
+
+
+def main():
+    parser = argparse.ArgumentParser(
+        description="Generate multi-component vertical support proxy GT from an avatar OBJ."
+    )
+    parser.add_argument("--obj", required=True, help="Path to avatar OBJ.")
+    parser.add_argument("--out_dir", required=True, help="Output directory.")
+    parser.add_argument("--num_slices", type=int, default=10, help="Number of y-normalized slices.")
+    parser.add_argument("--top_k", type=int, default=4, help="Max components per slice.")
+    parser.add_argument(
+        "--slice_min",
+        type=float,
+        default=0.08,
+        help="Lowest normalized y slice. Skips feet by default.",
+    )
+    parser.add_argument(
+        "--slice_max",
+        type=float,
+        default=0.88,
+        help="Highest normalized y slice. Skips head/top boundary by default.",
+    )
+    parser.add_argument("--png_size", type=int, default=768)
+    parser.add_argument("--json_name", default="body_proxy_gt.json")
+    parser.add_argument("--tensor_name", default="body_proxy_tensor.npy")
+    parser.add_argument("--png_dir_name", default="slices_png")
+    args = parser.parse_args()
+    generate_body_proxy_gt(
+        args.obj,
+        args.out_dir,
+        num_slices=args.num_slices,
+        top_k=args.top_k,
+        slice_min=args.slice_min,
+        slice_max=args.slice_max,
+        png_size=args.png_size,
+        json_file_name=args.json_name,
+        tensor_file_name=args.tensor_name,
+        png_dir_name=args.png_dir_name,
+    )
 
 
 if __name__ == "__main__":

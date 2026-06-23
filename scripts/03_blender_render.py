@@ -11,7 +11,7 @@ import bpy
 from mathutils import Matrix, Vector
 
 CONFIG_JSON_PATH = Path(r"C:\Users\CGnA\Desktop\CLO\dataset_config.json")
-SCRIPT_PATH = Path(globals().get("__file__", CONFIG_JSON_PATH.parent / "scripts" / "02_blender_render.py")).resolve()
+SCRIPT_PATH = Path(globals().get("__file__", CONFIG_JSON_PATH.parent / "scripts" / "03_blender_render.py")).resolve()
 SCRIPT_DIR = SCRIPT_PATH.parent
 
 repo_candidates = [
@@ -1123,31 +1123,31 @@ def main():
         choose(args.sample_index, config, ["blender_render", "sample_index"], 0)
     )
 
-    hdri_path_value = choose(
-        args.hdri_path,
-        config,
-        ["stage_4_blender_render", "inputs", "hdri_path"],
-        deep_get(config, ["blender_render", "hdri_path"], ""),
+    hdri_path_value = (
+        args.hdri_path
+        or deep_get(config, ["stage_3_blender_render", "inputs", "hdri_path"], "")
+        or deep_get(config, ["stage_4_blender_render", "inputs", "hdri_path"], "")
+        or deep_get(config, ["blender_render", "hdri_path"], "")
     )
     render_settings = {
         "hdri_path": hdri_path_value,
-        "num_views": int(choose(args.num_views, config, ["stage_4_blender_render", "settings", "num_views"], deep_get(config, ["blender_render", "num_views"], 24))),
-        "resolution": int(choose(args.resolution, config, ["stage_4_blender_render", "settings", "resolution"], deep_get(config, ["blender_render", "resolution"], 1080))),
-        "camera_radius": float(choose(args.camera_radius, config, ["stage_4_blender_render", "settings", "camera_radius"], deep_get(config, ["blender_render", "camera_radius"], 0.0))),
-        "radius_scale": float(choose(args.radius_scale, config, ["stage_4_blender_render", "settings", "radius_scale"], deep_get(config, ["blender_render", "radius_scale"], 4.0))),
-        "lens_mm": float(choose(args.lens_mm, config, ["stage_4_blender_render", "settings", "lens_mm"], deep_get(config, ["blender_render", "lens_mm"], 50.0))),
-        "sensor_width_mm": float(choose(args.sensor_width_mm, config, ["stage_4_blender_render", "settings", "sensor_width_mm"], deep_get(config, ["blender_render", "sensor_width_mm"], 36.0))),
-        "samples": int(choose(args.samples, config, ["stage_4_blender_render", "settings", "samples"], deep_get(config, ["blender_render", "samples"], 256))),
-        "normal_strength": float(choose(args.normal_strength, config, ["stage_4_blender_render", "settings", "normal_strength"], deep_get(config, ["blender_render", "normal_strength"], 1.0))),
-        "world_strength": float(choose(args.world_strength, config, ["stage_4_blender_render", "settings", "world_strength"], deep_get(config, ["blender_render", "world_strength"], 0.2))),
-        "light_scale": float(choose(args.light_scale, config, ["stage_4_blender_render", "settings", "light_scale"], deep_get(config, ["blender_render", "light_scale"], 0.12))),
-        "exposure": float(choose(args.exposure, config, ["stage_4_blender_render", "settings", "exposure"], deep_get(config, ["blender_render", "exposure"], -0.2))),
+        "num_views": int(choose(args.num_views, config, ["stage_3_blender_render", "settings", "num_views"], deep_get(config, ["stage_4_blender_render", "settings", "num_views"], deep_get(config, ["blender_render", "num_views"], 24)))),
+        "resolution": int(choose(args.resolution, config, ["stage_3_blender_render", "settings", "resolution"], deep_get(config, ["stage_4_blender_render", "settings", "resolution"], deep_get(config, ["blender_render", "resolution"], 1080)))),
+        "camera_radius": float(choose(args.camera_radius, config, ["stage_3_blender_render", "settings", "camera_radius"], deep_get(config, ["stage_4_blender_render", "settings", "camera_radius"], deep_get(config, ["blender_render", "camera_radius"], 0.0)))),
+        "radius_scale": float(choose(args.radius_scale, config, ["stage_3_blender_render", "settings", "radius_scale"], deep_get(config, ["stage_4_blender_render", "settings", "radius_scale"], deep_get(config, ["blender_render", "radius_scale"], 4.0)))),
+        "lens_mm": float(choose(args.lens_mm, config, ["stage_3_blender_render", "settings", "lens_mm"], deep_get(config, ["stage_4_blender_render", "settings", "lens_mm"], deep_get(config, ["blender_render", "lens_mm"], 50.0)))),
+        "sensor_width_mm": float(choose(args.sensor_width_mm, config, ["stage_3_blender_render", "settings", "sensor_width_mm"], deep_get(config, ["stage_4_blender_render", "settings", "sensor_width_mm"], deep_get(config, ["blender_render", "sensor_width_mm"], 36.0)))),
+        "samples": int(choose(args.samples, config, ["stage_3_blender_render", "settings", "samples"], deep_get(config, ["stage_4_blender_render", "settings", "samples"], deep_get(config, ["blender_render", "samples"], 256)))),
+        "normal_strength": float(choose(args.normal_strength, config, ["stage_3_blender_render", "settings", "normal_strength"], deep_get(config, ["stage_4_blender_render", "settings", "normal_strength"], deep_get(config, ["blender_render", "normal_strength"], 1.0)))),
+        "world_strength": float(choose(args.world_strength, config, ["stage_3_blender_render", "settings", "world_strength"], deep_get(config, ["stage_4_blender_render", "settings", "world_strength"], deep_get(config, ["blender_render", "world_strength"], 0.2)))),
+        "light_scale": float(choose(args.light_scale, config, ["stage_3_blender_render", "settings", "light_scale"], deep_get(config, ["stage_4_blender_render", "settings", "light_scale"], deep_get(config, ["blender_render", "light_scale"], 0.12)))),
+        "exposure": float(choose(args.exposure, config, ["stage_3_blender_render", "settings", "exposure"], deep_get(config, ["stage_4_blender_render", "settings", "exposure"], deep_get(config, ["blender_render", "exposure"], -0.2)))),
     }
 
-    explicit_obj_path = choose(args.obj_path, config, ["stage_4_blender_render", "inputs", "obj_path"], "")
-    explicit_output_dir = choose(args.output_dir, config, ["stage_4_blender_render", "outputs", "render_dir"], "")
-    explicit_diffuse_path = choose(args.diffuse_path, config, ["stage_4_blender_render", "inputs", "diffuse_path"], "")
-    explicit_normal_path = choose(args.normal_path, config, ["stage_4_blender_render", "inputs", "normal_path"], "")
+    explicit_obj_path = choose(args.obj_path, config, ["stage_3_blender_render", "inputs", "obj_path"], deep_get(config, ["stage_4_blender_render", "inputs", "obj_path"], ""))
+    explicit_output_dir = choose(args.output_dir, config, ["stage_3_blender_render", "outputs", "render_dir"], deep_get(config, ["stage_4_blender_render", "outputs", "render_dir"], ""))
+    explicit_diffuse_path = choose(args.diffuse_path, config, ["stage_3_blender_render", "inputs", "diffuse_path"], deep_get(config, ["stage_4_blender_render", "inputs", "diffuse_path"], ""))
+    explicit_normal_path = choose(args.normal_path, config, ["stage_3_blender_render", "inputs", "normal_path"], deep_get(config, ["stage_4_blender_render", "inputs", "normal_path"], ""))
 
     render_root.mkdir(parents=True, exist_ok=True)
     pipeline_summary_path = render_root / "pipeline_summary.json"

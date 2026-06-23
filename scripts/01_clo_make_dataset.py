@@ -442,7 +442,8 @@ def apply_config(config, args, config_dir=""):
         or OUT_DIR
     )
     GS_DIR = (
-        deep_get(config, ["stage_5_3dgs_training", "outputs", "gs_dir"])
+        deep_get(config, ["stage_4_3dgs_training", "outputs", "gs_dir"])
+        or deep_get(config, ["stage_5_3dgs_training", "outputs", "gs_dir"])
         or deep_get(config, ["3dgs_training", "output_dir"])
         or (os.path.join(output_root, deep_get(config, ["naming", "gs_dir"], "")) if output_root and deep_get(config, ["naming", "gs_dir"], "") else "")
         or GS_DIR

@@ -39,8 +39,9 @@ def parse_args():
         description=(
             "Run the exact dataset stages listed in pipeline.run_stages from config. "
             "Paste/run this inside CLO Python for stage 01; "
-            "stage 02 launches Blender in background mode; "
-            "stage 03 launches the Gaussian Splatting trainer."
+            "stage 02 generates avatar body proxy GT inside CLO Python; "
+            "stage 03 launches Blender in background mode; "
+            "stage 04 launches the Gaussian Splatting trainer."
         )
     )
     parser.add_argument(
@@ -51,12 +52,12 @@ def parse_args():
     parser.add_argument(
         "--blender",
         default="",
-        help="Override pipeline.blender_executable for stage 02 rendering.",
+        help="Override pipeline.blender_executable for stage 03 rendering.",
     )
     parser.add_argument(
         "--python",
         default="",
-        help="Override pipeline.python_executable for stage 03 training launcher.",
+        help="Override pipeline.python_executable for stage 04 training launcher.",
     )
     parser.add_argument(
         "--dry-run",
@@ -87,9 +88,9 @@ def parse_stage_value(value, source):
     try:
         stage = int(value)
     except (TypeError, ValueError) as exc:
-        raise ValueError(f"{source} must contain integers from 1 to 3") from exc
-    if stage < 1 or stage > 3:
-        raise ValueError(f"{source} must contain integers from 1 to 3")
+        raise ValueError(f"{source} must contain integers from 1 to 4") from exc
+    if stage < 1 or stage > 4:
+        raise ValueError(f"{source} must contain integers from 1 to 4")
     return stage
 
 
@@ -97,7 +98,7 @@ def get_run_stages(config):
     configured_stages = deep_get(config, ["pipeline", "run_stages"], None)
     if configured_stages is not None:
         if not isinstance(configured_stages, list):
-            raise ValueError("pipeline.run_stages must be a list like [1, 2, 3]")
+            raise ValueError("pipeline.run_stages must be a list like [1, 2, 3, 4]")
         stages = [
             parse_stage_value(stage, "pipeline.run_stages")
             for stage in configured_stages
@@ -111,13 +112,13 @@ def get_run_stages(config):
             deduped.append(stage)
         return deduped
 
-    run_until_stage = deep_get(config, ["pipeline", "run_until_stage"], 3)
+    run_until_stage = deep_get(config, ["pipeline", "run_until_stage"], 4)
     try:
         run_until_stage = int(run_until_stage)
     except (TypeError, ValueError) as exc:
-        raise ValueError("pipeline.run_until_stage must be an integer from 0 to 3") from exc
-    if run_until_stage < 0 or run_until_stage > 3:
-        raise ValueError("pipeline.run_until_stage must be an integer from 0 to 3")
+        raise ValueError("pipeline.run_until_stage must be an integer from 0 to 4") from exc
+    if run_until_stage < 0 or run_until_stage > 4:
+        raise ValueError("pipeline.run_until_stage must be an integer from 0 to 4")
     return list(range(1, run_until_stage + 1))
 
 
@@ -177,18 +178,18 @@ def main():
         "python",
     )
 
-    stage_02 = [
+    stage_03 = [
         blender_executable,
         "--background",
         "--python",
-        str(SCRIPT_DIR / "02_blender_render.py"),
+        str(SCRIPT_DIR / "03_blender_render.py"),
         "--",
         "--config",
         config_path,
     ]
-    stage_03 = [
+    stage_04 = [
         python_executable,
-        str(SCRIPT_DIR / "03_gs_train.py"),
+        str(SCRIPT_DIR / "04_gs_train.py"),
         "--config",
         config_path,
     ]
@@ -204,8 +205,14 @@ def main():
             config_path,
             args.dry_run,
         ),
-        2: lambda: run_subprocess_step("02_blender_multiview", stage_02, args.dry_run),
-        3: lambda: run_subprocess_step("03_3dgs", stage_03, args.dry_run),
+        2: lambda: run_python_script_in_current_process(
+            "02_body_proxy_gt",
+            SCRIPT_DIR / "02_generate_proxy.py",
+            config_path,
+            args.dry_run,
+        ),
+        3: lambda: run_subprocess_step("03_blender_multiview", stage_03, args.dry_run),
+        4: lambda: run_subprocess_step("04_3dgs", stage_04, args.dry_run),
     }
 
     for stage in run_stages:
