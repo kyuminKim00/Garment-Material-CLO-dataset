@@ -24,6 +24,9 @@ import sys
 import argparse
 import importlib.util
 import inspect
+import hashlib
+import struct
+import zipfile
 
 try:
     import import_api
@@ -116,6 +119,23 @@ OBJ_EXPORT_SCALE = 0.01
 CLO_VERSION = "2026.0.312"
 EXPECT_BENDING_BIAS_PATCH = False
 EXPECTED_BENDING_BIAS_FIELDS = []
+FABRIC_PROPERTY_FIELD_GROUPS = {
+    "stretch": ["fSuK", "fSvK", "fLeftShearK", "fLeftShearK_v2", "fRightShearK_v2", "fHK"],
+    "bending": ["fBuK", "fBuK_v2", "fBvK", "fBvK_v2", "fBhK", "fBhK_v2"],
+    "bending_shear": [
+        "fBLeftShearK",
+        "fBLeftShearK_v2",
+        "fBRightShearK",
+        "fBRightShearK_v2",
+    ],
+    "buckling": [
+        "fBucklingStiffnessU",
+        "fBucklingStiffnessV",
+        "fBucklingStiffnessH",
+        "fBucklingStiffnessLeftShear",
+    ],
+    "physical": ["fDensity", "fThickness", "fFriction"],
+}
 
 
 # =============================================================================
@@ -359,6 +379,7 @@ def apply_config(config, args):
     global OBJ_EXPORT_SCALE
     global CLO_VERSION
     global EXPECT_BENDING_BIAS_PATCH, EXPECTED_BENDING_BIAS_FIELDS
+    global FABRIC_PROPERTY_FIELD_GROUPS
 
     output_root = (
         deep_get(config, ["project", "output_dir"])
@@ -539,6 +560,17 @@ def apply_config(config, args):
             deep_get(config, ["fabric_sampler", "bias_fields"], []),
         )
     )
+    configured_field_groups = (
+        deep_get(config, ["stage_2_clo_simulation", "material_gt", "field_groups"])
+        or deep_get(config, ["fabric_gt", "field_groups"])
+        or None
+    )
+    if isinstance(configured_field_groups, dict):
+        FABRIC_PROPERTY_FIELD_GROUPS = {
+            str(group): [str(field) for field in fields]
+            for group, fields in configured_field_groups.items()
+            if isinstance(fields, list)
+        }
 
 
 def ensure_clo_api():
@@ -615,6 +647,165 @@ def get_material_json_path(sample_dir):
     return None
 
 
+def get_generated_material_json_path(sample_dir, zfab_path):
+    if os.path.isfile(sample_dir) and sample_dir.lower().endswith(".zfab"):
+        base = os.path.splitext(os.path.basename(zfab_path))[0]
+        return os.path.join(os.path.dirname(zfab_path), "material_json", base + ".material.json")
+    return os.path.join(sample_dir, "material.json")
+
+
+def sha256_file(path):
+    h = hashlib.sha256()
+    with open(path, "rb") as f:
+        while True:
+            chunk = f.read(1024 * 1024)
+            if not chunk:
+                break
+            h.update(chunk)
+    return h.hexdigest()
+
+
+def find_exact_key_offsets(data, key):
+    key_b = key.encode("ascii")
+    offsets = []
+    start = 0
+    while True:
+        idx = data.find(key_b, start)
+        if idx < 0:
+            break
+        val_off = idx + len(key_b)
+        start = idx + 1
+        if val_off + 4 > len(data):
+            continue
+        if data[val_off:val_off + 3] == b"_v2":
+            continue
+        if chr(data[val_off]).isalnum() or data[val_off:val_off + 1] == b"_":
+            continue
+        offsets.append(val_off)
+    return offsets
+
+
+def read_float_le(data, offset):
+    return struct.unpack("<f", data[offset:offset + 4])[0]
+
+
+def scan_fields_in_fab(data, field_names):
+    result = {}
+    for name in field_names:
+        values = []
+        for off in find_exact_key_offsets(data, name):
+            values.append({
+                "value_offset": off,
+                "value_float_le": read_float_le(data, off),
+                "raw_hex": data[off:off + 4].hex(),
+            })
+        result[name] = values
+    return result
+
+
+def first_scanned_value(field_scans, field_names):
+    for field in field_names:
+        values = field_scans.get(field, [])
+        if values:
+            return values[0].get("value_float_le")
+    return None
+
+
+def flatten_zfab_field_scans(fab_scans):
+    flattened = {}
+    for fab_file, field_scan in fab_scans.items():
+        for field, values in field_scan.items():
+            if values and field not in flattened:
+                flattened[field] = values
+    return flattened
+
+
+def build_material_gt_from_zfab(sample_dir, zfab_path, fabric_id, bend_id, sample_id):
+    field_groups = {k: list(v) for k, v in FABRIC_PROPERTY_FIELD_GROUPS.items()}
+    field_names = sorted({field for fields in field_groups.values() for field in fields})
+    if not zipfile.is_zipfile(zfab_path):
+        raise RuntimeError(f"Input is not a valid .zfab zip: {zfab_path}")
+
+    fab_scans = {}
+    with zipfile.ZipFile(zfab_path, "r") as z:
+        for info in z.infolist():
+            if info.filename.lower().endswith(".fab"):
+                data = z.read(info.filename)
+                fab_scans[info.filename] = scan_fields_in_fab(data, field_names)
+
+    if not fab_scans:
+        raise RuntimeError(f"No .fab file found inside zfab: {zfab_path}")
+
+    flat_scan = flatten_zfab_field_scans(fab_scans)
+    selected = {
+        group: {
+            field: first_scanned_value(flat_scan, [field])
+            for field in fields
+            if first_scanned_value(flat_scan, [field]) is not None
+        }
+        for group, fields in field_groups.items()
+    }
+    actual = {
+        "stretch_warp": first_scanned_value(flat_scan, ["fSuK"]),
+        "stretch_weft": first_scanned_value(flat_scan, ["fSvK"]),
+        "shear_left": first_scanned_value(flat_scan, ["fLeftShearK", "fLeftShearK_v2"]),
+        "shear_right": first_scanned_value(flat_scan, ["fRightShearK_v2"]),
+        "shear": first_scanned_value(flat_scan, ["fHK"]),
+        "bending_warp": first_scanned_value(flat_scan, ["fBuK"]),
+        "bending_warp_v2": first_scanned_value(flat_scan, ["fBuK_v2"]),
+        "bending_weft": first_scanned_value(flat_scan, ["fBvK"]),
+        "bending_weft_v2": first_scanned_value(flat_scan, ["fBvK_v2"]),
+        "bending_bias": first_scanned_value(flat_scan, ["fBhK"]),
+        "bending_bias_v2": first_scanned_value(flat_scan, ["fBhK_v2"]),
+        "bending_left_shear": first_scanned_value(flat_scan, ["fBLeftShearK"]),
+        "bending_left_shear_v2": first_scanned_value(flat_scan, ["fBLeftShearK_v2"]),
+        "bending_right_shear": first_scanned_value(flat_scan, ["fBRightShearK"]),
+        "bending_right_shear_v2": first_scanned_value(flat_scan, ["fBRightShearK_v2"]),
+        "buckling_warp": first_scanned_value(flat_scan, ["fBucklingStiffnessU"]),
+        "buckling_weft": first_scanned_value(flat_scan, ["fBucklingStiffnessV"]),
+        "buckling_bias": first_scanned_value(flat_scan, ["fBucklingStiffnessH"]),
+        "density": first_scanned_value(flat_scan, ["fDensity"]),
+        "thickness": first_scanned_value(flat_scan, ["fThickness"]),
+        "friction": first_scanned_value(flat_scan, ["fFriction"]),
+    }
+    actual = {k: v for k, v in actual.items() if v is not None}
+
+    return {
+        "sample_id": sample_id,
+        "fabric_id": fabric_id,
+        "bend_id": bend_id,
+        "source_sample_dir": sample_dir,
+        "source_zfab": zfab_path,
+        "zfab_sha256": sha256_file(zfab_path),
+        "created_at": time.strftime("%Y-%m-%d %H:%M:%S"),
+        "generated_by": "scripts/01_clo_make_dataset.py",
+        "gt_source": "scanned_from_zfab_fab_fields",
+        "actual": actual,
+        "measured": selected,
+        "internal_fields": {
+            "field_groups": field_groups,
+            "selected_values": selected,
+            "fab_files": list(fab_scans.keys()),
+            "scans": fab_scans,
+        },
+    }
+
+
+def ensure_material_json_for_zfab(sample_dir, zfab_path, fabric_id, bend_id, sample_id):
+    material_path = get_material_json_path(sample_dir)
+    if material_path:
+        return material_path, False, None
+
+    material_path = get_generated_material_json_path(sample_dir, zfab_path)
+    try:
+        material = build_material_gt_from_zfab(sample_dir, zfab_path, fabric_id, bend_id, sample_id)
+        os.makedirs(os.path.dirname(material_path), exist_ok=True)
+        write_json(material_path, material)
+        return material_path, True, None
+    except Exception as e:
+        return None, False, str(e)
+
+
 def infer_variant_ids(sample_dir, zfab_path, material_data=None):
     material_data = material_data or {}
     fabric_id = material_data.get("fabric_id")
@@ -657,11 +848,25 @@ def build_fabric_variant_records(sample_dirs):
         if material_src:
             material_data, material_json_error = try_read_json(material_src)
         fabric_id, bend_id, sample_id = infer_variant_ids(sample_dir, zfab_path, material_data)
+        material_json_generated = False
+        material_generation_error = None
+        if material_src is None:
+            material_src, material_json_generated, material_generation_error = ensure_material_json_for_zfab(
+                sample_dir,
+                zfab_path,
+                fabric_id,
+                bend_id,
+                sample_id,
+            )
+            if material_src:
+                material_data, material_json_error = try_read_json(material_src)
         variants.append({
             "variant_index": idx,
             "source_sample_dir": sample_dir,
             "zfab_path": zfab_path,
             "material_json": material_src,
+            "material_json_generated": material_json_generated,
+            "material_generation_error": material_generation_error,
             "material_json_error": material_json_error,
             "material_data": material_data,
             "fabric_id": fabric_id,
