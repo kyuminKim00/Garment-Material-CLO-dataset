@@ -2,8 +2,6 @@
 
 이 파이프라인은 `project.output_dir` 아래의 원본 garment/body `.zprj`와 fabric `.zfab`을 조합해 draped garment OBJ bundle을 만들고, 그 결과를 Blender multi-view 데이터셋으로 렌더링한다.
 
-현재 규칙에서는 fabric bending variant를 생성하지 않는다. `scripts/01_clo_fab_sampler.py`는 이전 실험 재현용으로 남겨 두지만, 기본 실행 경로에서는 사용하지 않는다.
-
 ## Current Dataset Root
 
 기본 config는 아래 데이터셋을 사용한다.
