@@ -128,19 +128,113 @@ Input:
 
 Output:
 
-- `output_dir/01_draped_garments/<fabric_id>/<garment_id>/obj.obj`
-- `output_dir/01_draped_garments/<fabric_id>/<garment_id>/obj.mtl`
-- `output_dir/01_draped_garments/<fabric_id>/<garment_id>/<CLO-exported texture files>`
-- `output_dir/01_draped_garments/<fabric_id>/<garment_id>/summary.json`
-- `output_dir/01_draped_garments/dataset_summary.json`
+- `output_dir/02_draped_garments/<garment_id>/<fabric_id>/<bend_id>/draped_garment.zprj`
+- `output_dir/02_draped_garments/<garment_id>/<fabric_id>/<bend_id>/obj.obj`
+- `output_dir/02_draped_garments/<garment_id>/<fabric_id>/<bend_id>/obj.mtl`
+- `output_dir/02_draped_garments/<garment_id>/<fabric_id>/<bend_id>/<CLO-exported texture files>`
+- `output_dir/02_draped_garments/<garment_id>/<fabric_id>/<bend_id>/summary.json`
+- `output_dir/02_draped_garments/dataset_summary.json`
+- `output_dir/04_3dgs/<garment_id>/<fabric_id>/<bend_id>/`
 
-`clo_simulation.save_sim_zprj`가 `true`이면 같은 sample folder에 `draped_garment.zprj`도 저장한다.
 
-## 2. Blender Multi-View Rendering
+Important:
 
-`pipeline.run_stages`에 `2`를 포함하면 실행된다. 예를 들어 `[2]`는 render만, `[2, 3]`은 render 후 3DGS를 실행한다.
+- 이 단계에서 OBJ/MTL/texture를 자동 export한다.
+- draped `.zprj` 저장 여부는 `clo_simulation.save_sim_zprj`에서 고른다.
+- `clo_simulation.export_obj`는 `true`로 둔다.
+- CLO Python Script Editor 안에서 실행한다.
 
-The renderer scans:
+## 3. Blender Multi-view Rendering
+
+Script:
+
+`PATH/scripts/blender_render.py`
+
+Config sections:
+
+- `project.output_dir`
+- `naming.render_dir`
+- `blender_render.render_all_samples`
+- `blender_render.sample_index`
+- `blender_render`
+
+Input:
+
+`blender_render.render_all_samples`로 렌더 범위를 고른다.
+
+- `true`: `output_dir/02_draped_garments/*/obj.obj`가 있는 모든 sample을 렌더링한다.
+- `false`: `blender_render.sample_index` 하나만 렌더링한다.
+
+예를 들어 `render_all_samples = true`이면 자동으로 아래 구조를 전부 읽는다.
+
+- `output_dir/02_draped_garments/<sample>/obj.obj`
+- `output_dir/02_draped_garments/<sample>/obj.mtl`
+- `output_dir/02_draped_garments/<sample>/<CLO-exported texture files>`
+
+Output:
+
+- `output_dir/03_blender_multiview/<sample>/images/*.png`
+- `output_dir/03_blender_multiview/<sample>/camera_parameters.json`
+- `output_dir/03_blender_multiview/<sample>/sparse/0/cameras.txt`
+- `output_dir/03_blender_multiview/<sample>/sparse/0/images.txt`
+- `output_dir/03_blender_multiview/<sample>/sparse/0/points3D.txt`
+- `output_dir/03_blender_multiview/<sample>/sparse/0/points3D.ply`
+- `output_dir/03_blender_multiview/<sample>/mesh_vertices.csv`
+- `output_dir/03_blender_multiview/<sample>/dataset_summary.json`
+- `output_dir/03_blender_multiview/pipeline_summary.json`
+
+
+sample 하나만 렌더링하려면 `blender_render.render_all_samples`를 `false`로 바꾸고 `blender_render.sample_index`를 지정한다.
+
+## 4. 00-04 단계 선택 실행
+
+Script:
+
+`PATH/scripts/run_stages.py`
+
+이 스크립트는 CLO를 새로 실행하지 않는다. CLO Python Script Editor에 코드를 붙여넣어 실행하는 용도다.
+실행할 마지막 단계는 config의 `pipeline.run_until_stage`에서 관리한다.
+
+```powershell
+python PATH/scripts/run_stages.py
+```
+
+- `0`: config 경로만 확인하고 종료
+- `1`: stage 01 실행
+- `2`: stage 01-02 실행
+- `3`: stage 01-03 실행
+- `4`: stage 01-04 실행
+
+Config 경로는 스크립트 안에 기본값으로 하드코딩되어 있다.
+
+```python
+CONFIG_JSON_PATH = r"C:\Users\CGnA\Desktop\CLO\dataset_config.json"
+```
+
+Blender가 `PATH`에 없으면 `--blender`로 Blender 실행 파일 경로를 넘긴다.
+기본 Blender/Python 실행 파일은 `pipeline.blender_executable`, `pipeline.python_executable`에서 관리한다.
+
+## 5. 3DGS 학습
+
+아직 실행하지 않는다.
+
+Current config:
+
+- `3dgs_training.enabled`: `false`
+
+나중에 사용할 input:
+
+- 3단계 multi-view images
+- COLMAP camera files
+- geometry `.ply`
+
+나중에 만들 output:
+
+- `output_dir/04_3dgs/garment_3dgs.ply`
+
+## Current Multi-Body Layout
+
+Place body-specific base garments under `output_dir/input/garments`:
 
 ```text
 output_dir/01_draped_garments/**/obj.obj

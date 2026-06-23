@@ -6,9 +6,32 @@ import sys
 from pathlib import Path
 
 
-REPO_ROOT = Path(r"C:\Users\CGnA\Desktop\CLO")
-SCRIPT_DIR = REPO_ROOT / "scripts"
-CONFIG_JSON_PATH = r"C:\Users\CGnA\Desktop\CLO\dataset_config.json"
+SCRIPT_PATH = Path(__file__).resolve()
+SCRIPT_DIR = SCRIPT_PATH.parent
+REPO_ROOT = SCRIPT_DIR.parent
+CONFIG_JSON_PATH = str(REPO_ROOT / "dataset_config.json")
+
+
+def script_argv():
+    if "--" in sys.argv:
+        return sys.argv[sys.argv.index("--") + 1:]
+
+    argv = sys.argv[1:]
+    cleaned = []
+    skip_next = False
+    for item in argv:
+        if skip_next:
+            skip_next = False
+            continue
+        if item == "--python":
+            skip_next = True
+            continue
+        if item in ("--background", "-b"):
+            continue
+        if Path(item).name == SCRIPT_PATH.name:
+            continue
+        cleaned.append(item)
+    return cleaned
 
 
 def parse_args():
@@ -40,7 +63,7 @@ def parse_args():
         action="store_true",
         help="Print commands without running them.",
     )
-    return parser.parse_args()
+    return parser.parse_args(script_argv())
 
 
 def load_config(path):

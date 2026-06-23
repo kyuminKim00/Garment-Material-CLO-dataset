@@ -1,0 +1,48 @@
+{
+  "sample_index": 4,
+  "sample_name": "base0__m_ovw",
+  "obj_path": "/home/cgna/km/Garment-Material-CLO-dataset/dataset/01_draped_garments/base0/m_ovw/obj.obj",
+  "diffuse_path": "",
+  "normal_path": "",
+  "texture_mapping": {
+    "mode": "use_imported_obj_mtl_materials",
+    "mtl_path": "/home/cgna/km/Garment-Material-CLO-dataset/dataset/01_draped_garments/base0/m_ovw/obj.mtl",
+    "material_names": [
+      "base0_FRONT_1890966"
+    ],
+    "material_count": 1,
+    "uv_layers": [
+      "UVMap"
+    ],
+    "loaded_textures": {}
+  },
+  "hdri_path": "",
+  "output_dir": "/home/cgna/km/Garment-Material-CLO-dataset/dataset/02_blender_multiview/base0/m_ovw",
+  "num_views": 48,
+  "resolution": 512,
+  "samples": 128,
+  "world_strength": 0.2,
+  "light_scale": 0.12,
+  "exposure": -0.2,
+  "object_radius": 4.85921039486498,
+  "camera_radius": 14.577631184594939,
+  "intrinsics": {
+    "width": 512,
+    "height": 512,
+    "fx": 711.1111111111111,
+    "fy": 711.1111111111111,
+    "cx": 256.0,
+    "cy": 256.0
+  },
+  "vertex_count": 3928,
+  "output_files": {
+    "images_dir": "/home/cgna/km/Garment-Material-CLO-dataset/dataset/02_blender_multiview/base0/m_ovw/images",
+    "camera_parameters_json": "/home/cgna/km/Garment-Material-CLO-dataset/dataset/02_blender_multiview/base0/m_ovw/camera_parameters.json",
+    "colmap_cameras_txt": "/home/cgna/km/Garment-Material-CLO-dataset/dataset/02_blender_multiview/base0/m_ovw/sparse/0/cameras.txt",
+    "colmap_images_txt": "/home/cgna/km/Garment-Material-CLO-dataset/dataset/02_blender_multiview/base0/m_ovw/sparse/0/images.txt",
+    "colmap_points3d_txt": "/home/cgna/km/Garment-Material-CLO-dataset/dataset/02_blender_multiview/base0/m_ovw/sparse/0/points3D.txt",
+    "geometry_ply": "/home/cgna/km/Garment-Material-CLO-dataset/dataset/02_blender_multiview/base0/m_ovw/sparse/0/points3D.ply",
+    "mesh_vertices_csv": "/home/cgna/km/Garment-Material-CLO-dataset/dataset/02_blender_multiview/base0/m_ovw/mesh_vertices.csv",
+    "summary_json": "/home/cgna/km/Garment-Material-CLO-dataset/dataset/02_blender_multiview/base0/m_ovw/dataset_summary.json"
+  }
+}

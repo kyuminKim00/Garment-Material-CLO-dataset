@@ -1,7 +1,7 @@
 {
   "project": {
     "name": "CLO garment dataset",
-    "output_dir": "D:/KKM/CLO-dataset"
+    "output_dir": "dataset"
   },
   "pipeline": {
     "run_stages": [
