@@ -1,5 +1,5 @@
 # MTL Exporter v1.0 by Seungwoo Oh at CLO - Virtual Fashion Inc.
-newmtl base0_FRONT_6624979
+newmtl base0_FRONT_780492
 Ka 0.257132 0.257132 0.257132
 Kd 1.000000 1.000000 1.000000
 Ks 0.000000 0.000000 0.000000
@@ -9,4 +9,4 @@ d 1.000000
 map_Ka C:/Users/CGnA/Desktop/CLO/example/01_draped_garments/base0/m_nrw/Cut _ Sew Knit_Velvet_3_BASE_rgb_medium.png
 map_Kd C:/Users/CGnA/Desktop/CLO/example/01_draped_garments/base0/m_nrw/Cut _ Sew Knit_Velvet_3_BASE_rgb_medium.png
 map_bump C:/Users/CGnA/Desktop/CLO/example/01_draped_garments/base0/m_nrw/Cut _ Sew Knit_Velvet_3_NRM.png
-map_bump C:/Users/CGnA/AppData/Local/CLO Virtual Fashion/CLO Standalone OnlineAuth/14100/1739/Cut _ Sew Knit_Velvet_3_NRM_3.png
+map_bump C:/Users/CGnA/AppData/Local/CLO Virtual Fashion/CLO Standalone OnlineAuth/11560/1135/Cut _ Sew Knit_Velvet_3_NRM_3.png

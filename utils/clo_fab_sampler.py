@@ -328,7 +328,7 @@ def find_exact_key_offsets(data: bytes, key: str) -> List[int]:
     key_b = key.encode("ascii")
     offsets = []
     start = 0
-    while True:
+    while start < len(data):
         idx = data.find(key_b, start)
         if idx < 0:
             break

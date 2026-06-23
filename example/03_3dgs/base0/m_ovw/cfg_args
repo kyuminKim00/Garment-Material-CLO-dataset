@@ -1,1 +1,0 @@
-Namespace(data_device='cuda', depths='', eval=False, images='images', model_path='/home/cgna/km/Garment-Material-CLO-dataset/dataset/03_3dgs/base0/m_ovw', resolution=-1, sh_degree=3, source_path='/home/cgna/km/Garment-Material-CLO-dataset/dataset/02_blender_multiview/base0/m_ovw', train_test_exp=False, white_background=True)

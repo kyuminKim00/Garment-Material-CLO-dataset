@@ -626,41 +626,6 @@ def get_zfab_path(sample_dir):
     return zfabs[0]
 
 
-def get_material_json_path(sample_dir):
-    if os.path.isfile(sample_dir) and sample_dir.lower().endswith(".zfab"):
-        base, _ = os.path.splitext(sample_dir)
-        candidates = [
-            base + ".material.json",
-            base + ".json",
-            os.path.join(
-                os.path.dirname(sample_dir),
-                "material_json",
-                os.path.basename(base) + ".material.json",
-            ),
-            os.path.join(
-                os.path.dirname(sample_dir),
-                "material_json",
-                os.path.basename(base) + ".json",
-            ),
-        ]
-        for path in candidates:
-            if os.path.exists(path):
-                return path
-        return None
-
-    path = os.path.join(sample_dir, "material.json")
-    if os.path.exists(path):
-        return path
-    return None
-
-
-def get_generated_material_json_path(sample_dir, zfab_path):
-    if os.path.isfile(sample_dir) and sample_dir.lower().endswith(".zfab"):
-        base = os.path.splitext(os.path.basename(zfab_path))[0]
-        return os.path.join(os.path.dirname(zfab_path), "material_json", base + ".material.json")
-    return os.path.join(sample_dir, "material.json")
-
-
 def get_output_fabric_material_json_path(out_dir, fabric_id):
     return os.path.join(out_dir, safe_name(fabric_id), "material.json")
 
@@ -680,7 +645,7 @@ def find_exact_key_offsets(data, key):
     key_b = key.encode("ascii")
     offsets = []
     start = 0
-    while True:
+    while start < len(data):
         idx = data.find(key_b, start)
         if idx < 0:
             break
@@ -689,8 +654,6 @@ def find_exact_key_offsets(data, key):
         if val_off + 4 > len(data):
             continue
         if data[val_off:val_off + 3] == b"_v2":
-            continue
-        if chr(data[val_off]).isalnum() or data[val_off:val_off + 1] == b"_":
             continue
         offsets.append(val_off)
     return offsets
@@ -762,37 +725,46 @@ def build_material_gt_from_zfab(sample_dir, zfab_path, fabric_id, bend_id, sampl
         raise RuntimeError(f"No .fab file found inside zfab: {zfab_path}")
 
     flat_scan = flatten_zfab_field_scans(fab_scans)
-    selected = {
-        group: {
-            field: last_scanned_value(flat_scan, [field])
-            for field in fields
-            if last_scanned_value(flat_scan, [field]) is not None
-        }
-        for group, fields in field_groups.items()
-    }
     density = last_scanned_value(flat_scan, ["fDensity"])
+    field_map = {
+        "stretch.warp": ["fSuK"],
+        "stretch.weft": ["fSvK"],
+        "shear": ["fRightShearK_v2", "fLeftShearK_v2", "fHK"],
+        "bending.warp": ["fBuK_v2", "fBuK"],
+        "bending.weft": ["fBvK_v2", "fBvK"],
+        "bending.bias": ["fBRightShearK_v2", "fBLeftShearK_v2", "fBhK_v2", "fBhK"],
+        "buckling.warp": ["fBucklingStiffnessU"],
+        "buckling.weft": ["fBucklingStiffnessV"],
+        "buckling.bias": ["fBucklingStiffnessH"],
+        "density": ["fDensity"],
+        "weight": ["fDensity"],
+        "thickness": ["fThickness"],
+        "friction": ["fFriction"],
+    }
     actual = {
         "stretch": {
-            "warp": last_scanned_value(flat_scan, ["fSuK"]),
-            "weft": last_scanned_value(flat_scan, ["fSvK"]),
+            "warp": last_scanned_value(flat_scan, field_map["stretch.warp"]),
+            "weft": last_scanned_value(flat_scan, field_map["stretch.weft"]),
         },
-        "shear": last_scanned_value(flat_scan, ["fRightShearK_v2", "fLeftShearK_v2", "fHK"]),
+        "shear": last_scanned_value(flat_scan, field_map["shear"]),
         "bending": {
-            "warp": last_scanned_value(flat_scan, ["fBuK_v2", "fBuK"]),
-            "weft": last_scanned_value(flat_scan, ["fBvK_v2", "fBvK"]),
-            "bias": last_scanned_value(flat_scan, ["fBRightShearK_v2", "fBLeftShearK_v2", "fBhK_v2", "fBhK"]),
+            "warp": last_scanned_value(flat_scan, field_map["bending.warp"]),
+            "weft": last_scanned_value(flat_scan, field_map["bending.weft"]),
+            "bias": last_scanned_value(flat_scan, field_map["bending.bias"]),
         },
         "buckling": {
-            "warp": last_scanned_value(flat_scan, ["fBucklingStiffnessU"]),
-            "weft": last_scanned_value(flat_scan, ["fBucklingStiffnessV"]),
-            "bias": last_scanned_value(flat_scan, ["fBucklingStiffnessH"]),
+            "warp": last_scanned_value(flat_scan, field_map["buckling.warp"]),
+            "weft": last_scanned_value(flat_scan, field_map["buckling.weft"]),
+            "bias": last_scanned_value(flat_scan, field_map["buckling.bias"]),
         },
         "density": density,
         "weight": round(density * 1000000.0, 6) if density is not None else None,
-        "thickness": last_scanned_value(flat_scan, ["fThickness"]),
-        "friction": last_scanned_value(flat_scan, ["fFriction"]),
+        "thickness": last_scanned_value(flat_scan, field_map["thickness"]),
+        "friction": last_scanned_value(flat_scan, field_map["friction"]),
     }
     actual = clean_empty_values(actual)
+    actual.setdefault("density", density)
+    actual.setdefault("weight", round(density * 1000000.0, 6) if density is not None else None)
 
     return {
         "sample_id": sample_id,
@@ -805,28 +777,11 @@ def build_material_gt_from_zfab(sample_dir, zfab_path, fabric_id, bend_id, sampl
         "generated_by": "scripts/01_clo_make_dataset.py",
         "gt_source": "scanned_from_zfab_fab_fields",
         "actual": actual,
-        "measured": selected,
         "internal_fields": {
-            "field_groups": field_groups,
-            "selected_values": selected,
+            "field_map": field_map,
             "fab_files": list(fab_scans.keys()),
         },
     }
-
-
-def ensure_material_json_for_zfab(sample_dir, zfab_path, fabric_id, bend_id, sample_id):
-    material_path = get_material_json_path(sample_dir)
-    if material_path:
-        return material_path, False, None
-
-    material_path = get_generated_material_json_path(sample_dir, zfab_path)
-    try:
-        material = build_material_gt_from_zfab(sample_dir, zfab_path, fabric_id, bend_id, sample_id)
-        os.makedirs(os.path.dirname(material_path), exist_ok=True)
-        write_json(material_path, material)
-        return material_path, True, None
-    except Exception as e:
-        return None, False, str(e)
 
 
 def infer_variant_ids(sample_dir, zfab_path, material_data=None):
@@ -865,24 +820,22 @@ def build_fabric_variant_records(sample_dirs):
     variants = []
     for idx, sample_dir in enumerate(sample_dirs):
         zfab_path = get_zfab_path(sample_dir)
-        material_src = get_material_json_path(sample_dir)
-        material_data = None
+        material_src = None
         material_json_error = None
-        if material_src:
-            material_data, material_json_error = try_read_json(material_src)
-        fabric_id, bend_id, sample_id = infer_variant_ids(sample_dir, zfab_path, material_data)
+        fabric_id, bend_id, sample_id = infer_variant_ids(sample_dir, zfab_path, None)
         material_json_generated = False
         material_generation_error = None
-        if material_src is None:
-            material_src, material_json_generated, material_generation_error = ensure_material_json_for_zfab(
+        material_data = None
+        try:
+            material_data = build_material_gt_from_zfab(
                 sample_dir,
                 zfab_path,
                 fabric_id,
                 bend_id,
                 sample_id,
             )
-            if material_src:
-                material_data, material_json_error = try_read_json(material_src)
+        except Exception as e:
+            material_generation_error = str(e)
         variants.append({
             "variant_index": idx,
             "source_sample_dir": sample_dir,
@@ -915,7 +868,8 @@ def validate_fabric_variant_metadata(fabric_variants):
 
         ui_values = material_data.get("ui") if isinstance(material_data.get("ui"), dict) else {}
         actual_values = material_data.get("actual") if isinstance(material_data.get("actual"), dict) else {}
-        has_bias = "bending_bias" in ui_values or "bending_bias" in actual_values
+        actual_bending = actual_values.get("bending") if isinstance(actual_values.get("bending"), dict) else {}
+        has_bias = "bending_bias" in ui_values or "bending_bias" in actual_values or "bias" in actual_bending
         if not has_bias:
             stale_variants.append(variant)
             continue
