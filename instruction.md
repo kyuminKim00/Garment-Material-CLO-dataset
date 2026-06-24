@@ -23,6 +23,22 @@
   - `f_34`, `f_38`, `f_42`, `f_46`
   - `m_44`, `m_48`, `m_52`, `m_56`
 
+## Total Dataset Count
+
+
+| Item | Count | Calculation | Note |
+| --- | ---: | --- | --- |
+| 옷 카테고리 | 5 | fixed | 반팔 티셔츠, 긴팔 티셔츠, 원피스, 치마, 바지 |
+| Garment geometry | 10 | fixed | 서로 다른 의류 geometry |
+| Fabric | 30 | fixed | 서로 다른 물성의 `.zfab` |
+| Avatar | 8 | fixed | `f_34`, `f_38`, `f_42`, `f_46`, `m_44`, `m_48`, `m_52`, `m_56` |
+| Draped garment sample | 2,400 | `10 x 30 x 8` | 각 garment/fabric/avatar 조합 |
+| Draped OBJ file | 2,400 | `10 x 30 x 8` | `01_draped_garments/**/obj.obj` |
+| Multi-view image | 115,200 | `2,400 x 48 views` | `03_blender_multiview/**/images/*.png` |
+| 3DGS PLY | 2,400 | `10 x 30 x 8` | sample당 최종 `point_cloud.ply` 1개 |
+
+3DGS 학습과 최종 3DGS PLY 생성은 연세대에서 수행한다.
+
 ## Dataset Selection Notes
 
 Garment 선택 규칙:
@@ -142,4 +158,3 @@ python scripts/run_stages.py --config dataset_config.json
 - 투명하거나 반투명해서 내부가 비치는 fabric은 없어야 한다.
 - Blender render는 sample당 48 views를 생성해야 한다.
 - `sparse/0/cameras.txt`와 `sparse/0/images.txt`가 있어야 3DGS 학습이 가능하다.
-
