@@ -26,7 +26,7 @@
 
 ## Total Dataset Count
 
-현재 dataset 크기는 유지하되, 모든 garment/fabric/avatar 조합을 full combination으로 만들지는 않는다. Fabric, avatar size, pose는 sampling 규칙에 따라 배정한다.
+Fabric, avatar size, pose는 sampling 규칙에 따라 배정한다.
 
 | Item | Count | Calculation | Note |
 | --- | ---: | --- | --- |
@@ -37,11 +37,10 @@
 | Avatar base | 2 | fixed | `FV2.1_Luna_Teenager`, `MV2.1_Jinho` |
 | Avatar body variant | 8 | `2 avatar bases x 4 size levels` | female/male 각각 4단계 size |
 | Body proxy GT | 8 | `8 body variants` | body variant별 `body_proxy_gt.json`, `body_proxy_tensor.npy` 1개 |
-| Body proxy PNG set | 8 | `8 body variants` | body variant별 `slices_png/` 1개 folder |
-| Draped garment sample | 12,000 | fixed target | sampled garment/fabric/body/pose 조합 |
-| Draped OBJ, texture file | 12,000 | fixed target | `01_draped_garments/**/obj.obj, .png` |
+| Draped garment sample | 12,000 | `5 x 10 x 30 x 8` | sampled garment/fabric/body/pose 조합 |
+| Draped OBJ, texture file | 12,000 | `5 x 10 x 30 x 8` | `01_draped_garments/**/obj.obj, .png` |
 | Multi-view image | 576,000 | `12,000 x 48 views` | `03_blender_multiview/**/images/*.png` |
-| 3DGS PLY | 12,000 | fixed target | sample당 최종 `point_cloud.ply` 1개 |
+| 3DGS PLY | 12,000 | `5 x 10 x 30 x 8` | sample당 최종 `point_cloud.ply` 1개 |
 
 3DGS 학습과 최종 3DGS PLY 생성은 연세대에서 수행한다.
 Body proxy GT는 body variant별로 한 번 생성하고, 각 garment/fabric/body/pose sample에서 같은 body variant proxy를 참조한다.
