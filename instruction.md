@@ -23,44 +23,38 @@
   - `f_34`, `f_38`, `f_42`, `f_46`
   - `m_44`, `m_48`, `m_52`, `m_56`
 
-## Confirmed Local Inputs
+## Dataset Selection Notes
 
-현재 workspace에서 확인된 입력은 아래와 같다.
+Garment 선택 규칙:
 
-```text
-dataset/input/
-  garments/
-    f_34.zprj
-    f_38.zprj
-    f_42.zprj
-    f_46.zprj
-    m_44.zprj
-    m_48.zprj
-    m_52.zprj
-    m_56.zprj
-  fabrics/
-    base0.zfab
-    base1.zfab
-    base2.zfab
-    base3.zfab
-    base4.zfab
-    material_json/
-      base0.material.json
-      ...
-      base4.material.json
-```
+- 5개 카테고리에서 골고루 선택한다: 반팔 티셔츠, 긴팔 티셔츠, 원피스, 치마, 바지.
+- 각 카테고리 안에서는 서로 다른 geometry를 가진 옷을 선택한다.
+- 단, 너무 특이한 옷은 제외한다.
+- 제외 예: 비정상적으로 긴 장식, 과도하게 복잡한 레이어, 시뮬레이션이 쉽게 깨질 수 있는 구조, 일반적인 착장 분포에서 벗어나는 극단적 실루엣.
+- 목표는 카테고리별 다양성은 확보하되, dataset 전체가 일반적인 의류 분포를 대표하도록 유지하는 것이다.
 
-확인된 사실: 현재 local fabric은 5개다. 목표 스펙의 30개 fabric은 아직 현재 입력 폴더에는 없다.
+Fabric 선택 규칙:
 
-확인된 사실: 현재 local garment/avatar `.zprj`는 8개다. 목표 스펙의 옷 카테고리 5개와 garment geometry 10개를 구분하는 별도 metadata는 현재 config에 없다.
+- 총 30개 fabric은 물성 분포가 최대한 균일해야 한다.
+- 빳빳한 fabric, 중간 정도의 fabric, 흐물거리는 fabric이 한쪽으로 치우치지 않도록 고른다.
+- bending, stretch, shear 등 drape에 영향을 주는 물성이 서로 다른 sample을 포함한다.
+- 같은 느낌의 fabric이 과도하게 반복되면 제외하거나 다른 물성으로 교체한다.
+- fabric은 절대 투명하거나 반투명하면 안 된다.
+- render에서 안쪽 body/avatar가 비치는 fabric은 사용하지 않는다.
+
+Avatar 선택 규칙:
+
+- avatar는 체형별로 나누어 사용한다.
+- 사용할 avatar 8개는 별도로 제공되는 것을 그대로 사용한다.
+- 대상 avatar ID는 `f_34`, `f_38`, `f_42`, `f_46`, `m_44`, `m_48`, `m_52`, `m_56`이다.
+- avatar는 normal, over weight, under weight 계열이 포함되도록 구성한다.
+- dataset 생성 시 garment/fabric 조합은 같은 avatar set에 대해 일관되게 적용한다.
 
 ## Core Rules
 
-- Fabric bending sampler는 legacy로 보존하지만 기본 pipeline에서는 실행하지 않는다.
 - Stage 1은 `dataset/input/fabrics/*.zfab` 원본 fabric과 `dataset/input/garments/**/*.zprj`를 조합한다.
 - Output relative sample path는 `{fabric_id}/{garment_id}`다.
 - 예: `base0/f_34`
-- Stage 1, 3, 4는 같은 relative sample path를 공유한다.
 - Stage 2 body proxy는 body/avatar ID별로 한 번 생성한다.
 
 ## Output Structure
@@ -142,62 +136,10 @@ python scripts/run_stages.py --config dataset_config.json
 
 주의: stage 1과 stage 2는 CLO Python API가 필요하므로 CLO Python 환경에서 실행해야 한다.
 
-## Stage Details
-
-Stage 1 input:
-
-- `dataset/input/garments/**/*.zprj`
-- `dataset/input/fabrics/*.zfab`
-
-Stage 1 output:
-
-- `dataset/01_draped_garments/<fabric_id>/<garment_id>/obj.obj`
-- `dataset/01_draped_garments/<fabric_id>/<garment_id>/obj.mtl`
-- `dataset/01_draped_garments/<fabric_id>/<garment_id>/summary.json`
-- `dataset/01_draped_garments/dataset_summary.json`
-
-Stage 2 output:
-
-- `dataset/02_body_proxy_gt/<body_id>/avatar.obj`
-- `dataset/02_body_proxy_gt/<body_id>/avatar_meta.json`
-- `dataset/02_body_proxy_gt/<body_id>/proxy/body_proxy_gt.json`
-- `dataset/02_body_proxy_gt/<body_id>/proxy/body_proxy_tensor.npy`
-- `dataset/02_body_proxy_gt/<body_id>/proxy/slices_png/`
-
-Stage 3 output:
-
-- `dataset/03_blender_multiview/<fabric_id>/<garment_id>/images/*.png`
-- `dataset/03_blender_multiview/<fabric_id>/<garment_id>/camera_parameters.json`
-- `dataset/03_blender_multiview/<fabric_id>/<garment_id>/mesh_vertices.csv`
-- `dataset/03_blender_multiview/<fabric_id>/<garment_id>/sparse/0/cameras.txt`
-- `dataset/03_blender_multiview/<fabric_id>/<garment_id>/sparse/0/images.txt`
-- `dataset/03_blender_multiview/<fabric_id>/<garment_id>/sparse/0/points3D.txt`
-- `dataset/03_blender_multiview/<fabric_id>/<garment_id>/sparse/0/points3D.ply`
-
-Stage 4 output:
-
-- `dataset/04_3dgs/<fabric_id>/<garment_id>/point_cloud/iteration_*/point_cloud.ply`
-- `dataset/04_3dgs/<fabric_id>/<garment_id>/point_cloud.ply`
-- optional render output under `dataset/04_3dgs/<fabric_id>/<garment_id>/train/`
-- `dataset/04_3dgs/pipeline_summary.json`
-
 ## Quality Checks
 
 - 각 fabric/avatar 조합마다 OBJ, MTL, texture files가 존재해야 한다.
+- 투명하거나 반투명해서 내부가 비치는 fabric은 없어야 한다.
 - Blender render는 sample당 48 views를 생성해야 한다.
-- `sparse/0/cameras.txt`와 `sparse/0/images.txt`가 있어야 3DGS stage 대상이 된다.
-- `dataset_summary.json`과 실제 folder path가 일치해야 한다.
-- 3DGS 실행 환경에는 `diff_gaussian_rasterization`, `simple_knn`, `fused_ssim` CUDA extension이 설치되어 있어야 한다.
+- `sparse/0/cameras.txt`와 `sparse/0/images.txt`가 있어야 3DGS 학습이 가능하다.
 
-## Deprecated Bending Notes
-
-이전 bending 실험용 코드와 config는 보존한다.
-
-- `scripts/01_clo_fab_sampler.py`
-- `fabric_sampler.sample_count`
-- `fabric_sampler.sample_bins`
-- `naming.fabric_dir`
-- `naming.fabric_variant_dir_template`
-- `naming.bend_dir_template`
-
-현재 dataset 생성에서는 위 값들이 기본 sample 수나 output path를 결정하지 않는다.
