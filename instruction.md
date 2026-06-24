@@ -64,6 +64,10 @@ Fabric 선택 규칙:
 - 같은 느낌의 fabric이 과도하게 반복되면 제외하거나 다른 물성으로 교체한다.
 - fabric은 절대 투명하거나 반투명하면 안 된다.
 - render에서 안쪽 body/avatar가 비치는 fabric은 사용하지 않는다.
+- 본 연구는 fabric의 물성 중 strecth, shear, bending, density의 각 방향은 신경쓰지 않고 하나의 값을 추론한다.
+- ex) bending weft/warp/bias 값이 다를 수 있지만 모델은 하나의 값을 출력함
+- 이를 학습시키기 위해 각 fabric의 물성을 확인하고 각 방향의 값이 다르면 하나의 값으로 조정해주는 작업이 필요하다.
+- ex) bending parameter가 각 방향으로 (30/40/30) 이라고하면 전부 30으로 맞춰야한다.
 
 Avatar 선택 규칙:
 

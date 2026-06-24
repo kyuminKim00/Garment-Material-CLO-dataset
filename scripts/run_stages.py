@@ -6,10 +6,18 @@ import sys
 from pathlib import Path
 
 
-SCRIPT_PATH = Path(__file__).resolve()
-SCRIPT_DIR = SCRIPT_PATH.parent
-REPO_ROOT = SCRIPT_DIR.parent
-CONFIG_JSON_PATH = r"/home/cgna/km/Garment-Material-CLO-dataset/dataset_config.json"
+def current_script_path():
+    script_file = globals().get("__file__", "")
+    if not script_file or str(script_file).startswith("<"):
+        return None
+    try:
+        return Path(script_file).expanduser().resolve()
+    except Exception:
+        return Path(script_file).expanduser()
+
+
+SCRIPT_PATH = current_script_path()
+CONFIG_JSON_PATH = r"C:\Users\CGnA\Desktop\CLO\dataset_config.json"
 
 
 def script_argv():
@@ -28,7 +36,7 @@ def script_argv():
             continue
         if item in ("--background", "-b"):
             continue
-        if Path(item).name == SCRIPT_PATH.name:
+        if SCRIPT_PATH and Path(item).name == SCRIPT_PATH.name:
             continue
         cleaned.append(item)
     return cleaned
@@ -128,6 +136,39 @@ def choose_cli_or_config(cli_value, config, key_path, default):
     return deep_get(config, key_path, default)
 
 
+def resolve_config_path(value):
+    return Path(value).expanduser().resolve()
+
+
+def resolve_path(value, base_dir):
+    path = Path(str(value)).expanduser()
+    if not path.is_absolute():
+        path = base_dir / path
+    return path.resolve()
+
+
+def resolve_scripts_dir(config, config_dir):
+    scripts_dir = (
+        deep_get(config, ["paths", "scripts_dir"], "")
+        or deep_get(config, ["pipeline", "scripts_dir"], "")
+    )
+    if scripts_dir:
+        return resolve_path(scripts_dir, config_dir)
+    if SCRIPT_PATH and SCRIPT_PATH.exists():
+        return SCRIPT_PATH.parent
+    return (config_dir / "scripts").resolve()
+
+
+def require_script(scripts_dir, file_name):
+    script_path = scripts_dir / file_name
+    if not script_path.exists():
+        raise FileNotFoundError(
+            f"Stage script not found: {script_path}. "
+            "Set paths.scripts_dir in dataset_config.json to the folder containing the stage scripts."
+        )
+    return script_path
+
+
 def command_text(command):
     return " ".join(f'"{part}"' if " " in str(part) else str(part) for part in command)
 
@@ -147,22 +188,25 @@ def run_python_script_in_current_process(name, script_path, config_path, dry_run
         sys.argv = old_argv
 
 
-def run_subprocess_step(name, command, dry_run=False):
+def run_subprocess_step(name, command, cwd, dry_run=False):
     print("=" * 80)
     print(f"[{name}]")
     print(command_text(command))
     if dry_run:
         return
 
-    completed = subprocess.run(command, cwd=str(REPO_ROOT))
+    completed = subprocess.run(command, cwd=str(cwd))
     if completed.returncode != 0:
         raise SystemExit(f"{name} failed with exit code {completed.returncode}")
 
 
 def main():
     args = parse_args()
-    config_path_obj = Path(args.config).expanduser().resolve()
+    config_path_obj = resolve_config_path(args.config)
     config = load_config(config_path_obj)
+    config_dir = config_path_obj.parent
+    scripts_dir = resolve_scripts_dir(config, config_dir)
+    repo_root = scripts_dir.parent
     config_path = str(config_path_obj)
     run_stages = get_run_stages(config)
     blender_executable = choose_cli_or_config(
@@ -182,14 +226,14 @@ def main():
         blender_executable,
         "--background",
         "--python",
-        str(SCRIPT_DIR / "03_blender_render.py"),
+        str(require_script(scripts_dir, "03_blender_render.py")),
         "--",
         "--config",
         config_path,
     ]
     stage_04 = [
         python_executable,
-        str(SCRIPT_DIR / "04_gs_train.py"),
+        str(require_script(scripts_dir, "04_gs_train.py")),
         "--config",
         config_path,
     ]
@@ -197,22 +241,23 @@ def main():
     print("=" * 80)
     print(f"[Run stages] requested stages: {run_stages}")
     print(f"[Config] {config_path}")
+    print(f"[Scripts] {scripts_dir}")
 
     stage_actions = {
         1: lambda: run_python_script_in_current_process(
             "01_draped_garments",
-            SCRIPT_DIR / "01_clo_make_dataset.py",
+            require_script(scripts_dir, "01_clo_make_dataset.py"),
             config_path,
             args.dry_run,
         ),
         2: lambda: run_python_script_in_current_process(
             "02_body_proxy_gt",
-            SCRIPT_DIR / "02_generate_proxy.py",
+            require_script(scripts_dir, "02_generate_proxy.py"),
             config_path,
             args.dry_run,
         ),
-        3: lambda: run_subprocess_step("03_blender_multiview", stage_03, args.dry_run),
-        4: lambda: run_subprocess_step("04_3dgs", stage_04, args.dry_run),
+        3: lambda: run_subprocess_step("03_blender_multiview", stage_03, repo_root, args.dry_run),
+        4: lambda: run_subprocess_step("04_3dgs", stage_04, repo_root, args.dry_run),
     }
 
     for stage in run_stages:

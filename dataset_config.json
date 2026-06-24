@@ -1,11 +1,14 @@
 {
   "project": {
     "name": "CLO garment dataset",
-    "output_dir": "dataset"
+    "output_dir": "D:/KKM/CLO-dataset"
+  },
+  "paths": {
+    "scripts_dir": "C:/Users/CGnA/Desktop/CLO/scripts"
   },
   "pipeline": {
     "run_stages": [
-      3, 4
+      1, 2, 3
     ],
     "blender_executable": "blender",
     "python_executable": "python"
