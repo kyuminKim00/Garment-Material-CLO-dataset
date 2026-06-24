@@ -17,7 +17,7 @@
 ## Dataset Target Spec
 
 - 옷 카테고리 5개: 반팔 티셔츠, 긴팔 티셔츠, 원피스, 치마, 바지
-- Garment geometry 10개: geometry가 서로 다른 옷
+- Garment geometry 50개: 5개 카테고리별 10개씩, geometry가 서로 다른 옷
 - Fabric 30개: 물성이 서로 다른 `.zfab` fabric dataset
 - Avatar 8개: normal, over weight, under weight 계열의 female/male body
   - `f_34`, `f_38`, `f_42`, `f_46`
@@ -29,14 +29,14 @@
 | Item | Count | Calculation | Note |
 | --- | ---: | --- | --- |
 | 옷 카테고리 | 5 | fixed | 반팔 티셔츠, 긴팔 티셔츠, 원피스, 치마, 바지 |
-| Garment geometry | 10 | fixed | 서로 다른 의류 geometry |
+| Garment geometry | 50 | `5 categories x 10 geometries` | 카테고리별 10개씩, 서로 다른 의류 geometry |
 | Fabric | 30 | fixed | 서로 다른 물성의 `.zfab` |
 | Avatar | 8 | fixed | `f_34`, `f_38`, `f_42`, `f_46`, `m_44`, `m_48`, `m_52`, `m_56` |
 | Body proxy GT | 8 | `8 avatars` | avatar별 `body_proxy_gt.json`, `body_proxy_tensor.npy` 1개 |
-| Draped garment sample | 2,400 | `10 x 30 x 8` | 각 garment/fabric/avatar 조합 |
-| Draped OBJ file | 2,400 | `10 x 30 x 8` | `01_draped_garments/**/obj.obj` |
-| Multi-view image | 115,200 | `2,400 x 48 views` | `03_blender_multiview/**/images/*.png` |
-| 3DGS PLY | 2,400 | `10 x 30 x 8` | sample당 최종 `point_cloud.ply` 1개 |
+| Draped garment sample | 12,000 | `5 x 10 x 30 x 8` | 각 category/garment/fabric/avatar 조합 |
+| Draped OBJ file | 12,000 | `5 x 10 x 30 x 8` | `01_draped_garments/**/obj.obj` |
+| Multi-view image | 576,000 | `12,000 x 48 views` | `03_blender_multiview/**/images/*.png` |
+| 3DGS PLY | 12,000 | `5 x 10 x 30 x 8` | sample당 최종 `point_cloud.ply` 1개 |
 
 3DGS 학습과 최종 3DGS PLY 생성은 연세대에서 수행한다.
 Body proxy GT는 avatar별로 한 번 생성하고, 각 garment/fabric/avatar sample에서 같은 avatar proxy를 참조한다.
