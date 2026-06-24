@@ -34,7 +34,7 @@
 | Avatar | 8 | fixed | `f_34`, `f_38`, `f_42`, `f_46`, `m_44`, `m_48`, `m_52`, `m_56` |
 | Body proxy GT | 8 | `8 avatars` | avatar별 `body_proxy_gt.json`, `body_proxy_tensor.npy` 1개 |
 | Draped garment sample | 12,000 | `5 x 10 x 30 x 8` | 각 category/garment/fabric/avatar 조합 |
-| Draped OBJ file | 12,000 | `5 x 10 x 30 x 8` | `01_draped_garments/**/obj.obj` |
+| Draped OBJ, texture file | 12,000 | `5 x 10 x 30 x 8` | `01_draped_garments/**/obj.obj, .png` |
 | Multi-view image | 576,000 | `12,000 x 48 views` | `03_blender_multiview/**/images/*.png` |
 | 3DGS PLY | 12,000 | `5 x 10 x 30 x 8` | sample당 최종 `point_cloud.ply` 1개 |
 
