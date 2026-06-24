@@ -18,28 +18,33 @@
 
 - 옷 카테고리 5개: 반팔 티셔츠, 긴팔 티셔츠, 원피스, 치마, 바지
 - Garment geometry 50개: 5개 카테고리별 10개씩, geometry가 서로 다른 옷
-- Fabric 30개: 물성이 서로 다른 `.zfab` fabric dataset
-- Avatar 8개: normal, over weight, under weight 계열의 female/male body
-  - `f_34`, `f_38`, `f_42`, `f_46`
-  - `m_44`, `m_48`, `m_52`, `m_56`
+- Fabric 30개: fabric pool 50개 중 물성 분포가 균일하도록 30개 선택
+- Avatar base 2개:
+  - female: `FV2.1_Luna_Teenager`
+  - male: `MV2.1_Jinho`
+- Avatar body variant 8개: female/male 각각 `CLO_EU_Female`, `CLO_EU_Male` size에서 4단계씩 sampling
 
 ## Total Dataset Count
 
+현재 dataset 크기는 유지하되, 모든 garment/fabric/avatar 조합을 full combination으로 만들지는 않는다. Fabric, avatar size, pose는 sampling 규칙에 따라 배정한다.
 
 | Item | Count | Calculation | Note |
 | --- | ---: | --- | --- |
 | 옷 카테고리 | 5 | fixed | 반팔 티셔츠, 긴팔 티셔츠, 원피스, 치마, 바지 |
 | Garment geometry | 50 | `5 categories x 10 geometries` | 카테고리별 10개씩, 서로 다른 의류 geometry |
-| Fabric | 30 | fixed | 서로 다른 물성의 `.zfab` |
-| Avatar | 8 | fixed | `f_34`, `f_38`, `f_42`, `f_46`, `m_44`, `m_48`, `m_52`, `m_56` |
-| Body proxy GT | 8 | `8 avatars` | avatar별 `body_proxy_gt.json`, `body_proxy_tensor.npy` 1개 |
-| Draped garment sample | 12,000 | `5 x 10 x 30 x 8` | 각 category/garment/fabric/avatar 조합 |
-| Draped OBJ, texture file | 12,000 | `5 x 10 x 30 x 8` | `01_draped_garments/**/obj.obj, .png` |
+| Fabric pool | 50 | fixed | 후보 `.zfab` pool |
+| Selected fabric | 30 | sample from 50 | 물성 분포가 균일하도록 선택 |
+| Avatar base | 2 | fixed | `FV2.1_Luna_Teenager`, `MV2.1_Jinho` |
+| Avatar body variant | 8 | `2 avatar bases x 4 size levels` | female/male 각각 4단계 size |
+| Body proxy GT | 8 | `8 body variants` | body variant별 `body_proxy_gt.json`, `body_proxy_tensor.npy` 1개 |
+| Body proxy PNG set | 8 | `8 body variants` | body variant별 `slices_png/` 1개 folder |
+| Draped garment sample | 12,000 | fixed target | sampled garment/fabric/body/pose 조합 |
+| Draped OBJ, texture file | 12,000 | fixed target | `01_draped_garments/**/obj.obj, .png` |
 | Multi-view image | 576,000 | `12,000 x 48 views` | `03_blender_multiview/**/images/*.png` |
-| 3DGS PLY | 12,000 | `5 x 10 x 30 x 8` | sample당 최종 `point_cloud.ply` 1개 |
+| 3DGS PLY | 12,000 | fixed target | sample당 최종 `point_cloud.ply` 1개 |
 
 3DGS 학습과 최종 3DGS PLY 생성은 연세대에서 수행한다.
-Body proxy GT는 avatar별로 한 번 생성하고, 각 garment/fabric/avatar sample에서 같은 avatar proxy를 참조한다.
+Body proxy GT는 body variant별로 한 번 생성하고, 각 garment/fabric/body/pose sample에서 같은 body variant proxy를 참조한다.
 
 ## Dataset Selection Notes
 
@@ -53,7 +58,8 @@ Garment 선택 규칙:
 
 Fabric 선택 규칙:
 
-- 총 30개 fabric은 물성 분포가 최대한 균일해야 한다.
+- 후보 fabric 50개 중 30개를 선택한다.
+- 선택된 30개 fabric은 물성 분포가 최대한 균일해야 한다.
 - 빳빳한 fabric, 중간 정도의 fabric, 흐물거리는 fabric이 한쪽으로 치우치지 않도록 고른다.
 - bending, stretch, shear 등 drape에 영향을 주는 물성이 서로 다른 sample을 포함한다.
 - 같은 느낌의 fabric이 과도하게 반복되면 제외하거나 다른 물성으로 교체한다.
@@ -62,33 +68,42 @@ Fabric 선택 규칙:
 
 Avatar 선택 규칙:
 
-- avatar는 체형별로 나누어 사용한다.
-- 사용할 avatar 8개는 별도로 제공되는 것을 그대로 사용한다.
-- 대상 avatar ID는 `f_34`, `f_38`, `f_42`, `f_46`, `m_44`, `m_48`, `m_52`, `m_56`이다.
-- avatar는 normal, over weight, under weight 계열이 포함되도록 구성한다.
-- dataset 생성 시 garment/fabric 조합은 같은 avatar set에 대해 일관되게 적용한다.
+- base avatar는 female `FV2.1_Luna_Teenager`, male `MV2.1_Jinho`를 사용한다.
+- size는 `CLO_EU_Female`, `CLO_EU_Male` size table에서 성별별 4단계를 random sampling한다.
+- 4단계 size는 under weight부터 over weight까지 체형 변화가 모두 보이도록 고른다.
+- 결과적으로 female 4개, male 4개, 총 8개 body variant를 사용한다.
+- avatar size sampling은 dataset 전체에서 한쪽 체형에 치우치지 않도록 균형을 맞춘다.
+
+Pose 선택 규칙:
+
+- avatar를 불러왔을 때의 기본 A pose를 기준 pose로 사용한다.
+- pose variation은 어깨 관절만 작게 변경한다.
+- 어깨 관절 회전은 random으로 주되, 큰 움직임은 금지한다.
+- 권장 범위는 기본 A pose 기준 약 `-5도 ~ +5도`이다.
+- 팔 전체가 크게 올라가거나 내려가서 garment drape 분포가 비정상적으로 바뀌는 pose는 제외한다.
 
 ## Core Rules
 
 - Stage 1은 `dataset/input/fabrics/*.zfab` 원본 fabric과 `dataset/input/garments/**/*.zprj`를 조합한다.
-- Output relative sample path는 `{fabric_id}/{garment_id}`다.
-- 예: `base0/f_34`
-- Stage 2 body proxy는 body/avatar ID별로 한 번 생성한다.
+- Output relative sample path는 fabric, garment, body variant, pose 정보를 구분할 수 있어야 한다.
+- 예: `fabric_012/short_sleeve_003/body_f_size2_pose017`
+- Stage 2 body proxy는 body variant별로 한 번 생성한다.
 
 ## Output Structure
 
 ```text
 dataset/
   01_draped_garments/
-    base0/
-      f_34/
-        obj.obj
-        obj.mtl
-        summary.json
+    fabric_012/
+      short_sleeve_003/
+        body_f_size2_pose017/
+          obj.obj
+          obj.mtl
+          summary.json
       ...
     dataset_summary.json
   02_body_proxy_gt/
-    f_34/
+    body_f_size2/
       avatar.obj
       avatar_meta.json
       proxy/
@@ -97,23 +112,25 @@ dataset/
         slices_png/
     ...
   03_blender_multiview/
-    base0/
-      f_34/
-        images/
-        camera_parameters.json
-        mesh_vertices.csv
-        sparse/0/
-          cameras.txt
-          images.txt
-          points3D.txt
-          points3D.ply
+    fabric_012/
+      short_sleeve_003/
+        body_f_size2_pose017/
+          images/
+          camera_parameters.json
+          mesh_vertices.csv
+          sparse/0/
+            cameras.txt
+            images.txt
+            points3D.txt
+            points3D.ply
     pipeline_summary.json
   04_3dgs/
-    base0/
-      f_34/
-        cameras.json
-        point_cloud/
-        point_cloud.ply
+    fabric_012/
+      short_sleeve_003/
+        body_f_size2_pose017/
+          cameras.json
+          point_cloud/
+          point_cloud.ply
     pipeline_summary.json
 ```
 
