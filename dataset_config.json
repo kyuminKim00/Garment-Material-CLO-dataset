@@ -89,6 +89,7 @@
     "stop_on_first_failure": true,
     "save_sim_zprj": false,
     "skip_render": true,
+    "skip_existing": true,
     "export_obj": true
   },
   "body_proxy_gt": {
@@ -114,6 +115,7 @@
   "blender_render": {
     "render_all_samples": true,
     "sample_index": 0,
+    "skip_existing": true,
     "hdri_path": "",
     "num_views": 48,
     "resolution": 512,

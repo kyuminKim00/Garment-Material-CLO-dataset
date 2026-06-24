@@ -150,6 +150,11 @@ def parse_args():
         default="",
         help="true renders every sample folder; false renders only sample_index.",
     )
+    parser.add_argument(
+        "--skip_existing",
+        default="",
+        help="true skips samples that already have a complete render dataset.",
+    )
     parser.add_argument("--sample_index", type=int, default=None, help="Sample index to render.")
     parser.add_argument("--obj_path", default="", help="Path to the OBJ mesh.")
     parser.add_argument(
@@ -248,6 +253,62 @@ def prepare_output_dir(path):
         file_path = path / file_name
         if file_path.exists():
             file_path.unlink()
+
+
+def count_render_images(image_dir):
+    if not image_dir.exists():
+        return 0
+    return sum(1 for path in image_dir.iterdir() if path.suffix.lower() in {".png", ".jpg", ".jpeg"})
+
+
+def existing_render_result(target, render_settings):
+    output_dir = Path(target["output_dir"]).expanduser().resolve()
+    image_dir = output_dir / "images"
+    sparse_dir = output_dir / "sparse" / "0"
+    camera_json_path = output_dir / "camera_parameters.json"
+    summary_path = output_dir / "dataset_summary.json"
+    required_files = [
+        camera_json_path,
+        output_dir / "mesh_vertices.csv",
+        sparse_dir / "cameras.txt",
+        sparse_dir / "images.txt",
+        sparse_dir / "points3D.txt",
+        sparse_dir / "points3D.ply",
+        summary_path,
+    ]
+    if any(not path.exists() for path in required_files):
+        return None
+
+    expected_views = int(render_settings["num_views"])
+    if count_render_images(image_dir) < expected_views:
+        return None
+
+    try:
+        with open(camera_json_path, "r", encoding="utf-8-sig") as handle:
+            camera_json = json.load(handle)
+        if len(camera_json.get("images", [])) < expected_views:
+            return None
+    except Exception:
+        return None
+
+    return {
+        "status": "skipped_existing",
+        "sample_index": target.get("sample_index"),
+        "sample_name": target.get("sample_name", ""),
+        "obj_path": str(Path(target["obj_path"]).expanduser().resolve()),
+        "output_dir": str(output_dir),
+        "num_views": expected_views,
+        "output_files": {
+            "images_dir": str(image_dir),
+            "camera_parameters_json": str(camera_json_path),
+            "colmap_cameras_txt": str(sparse_dir / "cameras.txt"),
+            "colmap_images_txt": str(sparse_dir / "images.txt"),
+            "colmap_points3d_txt": str(sparse_dir / "points3D.txt"),
+            "geometry_ply": str(sparse_dir / "points3D.ply"),
+            "mesh_vertices_csv": str(output_dir / "mesh_vertices.csv"),
+            "summary_json": str(summary_path),
+        },
+    }
 
 
 def get_view3d_override():
@@ -1122,6 +1183,15 @@ def main():
     sample_index = int(
         choose(args.sample_index, config, ["blender_render", "sample_index"], 0)
     )
+    skip_existing = parse_bool(
+        choose(
+            args.skip_existing,
+            config,
+            ["blender_render", "skip_existing"],
+            deep_get(config, ["stage_3_blender_render", "settings", "skip_existing"], True),
+        ),
+        True,
+    )
 
     hdri_path_value = (
         args.hdri_path
@@ -1191,6 +1261,7 @@ def main():
         "obj_root": str(obj_root),
         "render_root": str(render_root),
         "num_targets": len(targets),
+        "skip_existing": skip_existing,
         "samples": [],
         "output_files": {
             "render_root": str(render_root),
@@ -1211,10 +1282,16 @@ def main():
         write_pipeline_summary(pipeline_summary_path, pipeline_summary)
 
         try:
-            sample_summary = render_one_sample(target, render_settings)
+            sample_summary = existing_render_result(target, render_settings) if skip_existing else None
+            if sample_summary:
+                print("=" * 80)
+                print(f"[Skip] {target.get('sample_name') or Path(target['obj_path']).parent.name}")
+                print(f"  output : {sample_summary['output_dir']}")
+            else:
+                sample_summary = render_one_sample(target, render_settings)
             sample_record.update(
                 {
-                    "status": "success",
+                    "status": sample_summary.get("status", "success"),
                     "summary_json": sample_summary["output_files"]["summary_json"],
                     "images_dir": sample_summary["output_files"]["images_dir"],
                     "geometry_ply": sample_summary["output_files"]["geometry_ply"],

@@ -106,6 +106,7 @@ STOP_ON_FIRST_FAILURE = True
 
 # True면 CLO turntable rendering을 건너뜀. 기본 dataset 이미지는 Blender stage에서 만든다.
 SKIP_RENDER = True
+SKIP_EXISTING = True
 
 # Simulation 후 garment OBJ bundle(.obj, .mtl, textures)을 export.
 EXPORT_OBJ = True
@@ -212,6 +213,16 @@ def parse_bool(value, default=False):
     if isinstance(value, (int, float)):
         return bool(value)
     return str(value).strip().lower() in ("1", "true", "yes", "y", "on")
+
+
+def count_existing_images(image_dir):
+    if not image_dir or not os.path.isdir(image_dir):
+        return 0
+    patterns = ("*.png", "*.jpg", "*.jpeg")
+    count = 0
+    for pattern in patterns:
+        count += len(glob.glob(os.path.join(image_dir, pattern)))
+    return count
 
 
 def load_config(path):
@@ -382,7 +393,7 @@ def apply_config(config, args, config_dir=""):
     global DATASET_SUMMARY_JSON
     global NUM_VIEWS, IMAGE_WIDTH, IMAGE_HEIGHT, START_INDEX
     global SIM_STEPS, SAVE_SIM_ZPRJ, MAX_SAMPLES, STOP_ON_FIRST_FAILURE
-    global SKIP_RENDER, EXPORT_OBJ
+    global SKIP_RENDER, SKIP_EXISTING, EXPORT_OBJ
     global OBJ_FILE_NAME, OBJ_EXPORT_FUNCTION_NAMES
     global OBJ_EXPORT_INCLUDE_GARMENT, OBJ_EXPORT_INCLUDE_AVATAR
     global OBJ_EXPORT_SCALE
@@ -520,6 +531,14 @@ def apply_config(config, args, config_dir=""):
             ["stage_2_clo_simulation", "settings", "skip_render"],
             deep_get(config, ["clo_simulation", "skip_render"], deep_get(config, ["clo", "skip_render"], SKIP_RENDER)),
         )
+    )
+    SKIP_EXISTING = parse_bool(
+        deep_get(
+            config,
+            ["stage_2_clo_simulation", "settings", "skip_existing"],
+            deep_get(config, ["clo_simulation", "skip_existing"], deep_get(config, ["clo", "skip_existing"], SKIP_EXISTING)),
+        ),
+        SKIP_EXISTING,
     )
     EXPORT_OBJ = bool(
         deep_get(
@@ -1366,6 +1385,108 @@ def collect_obj_bundle(out_sample_dir, preferred_obj_path=None):
     }
 
 
+def existing_draped_sample_record(
+    sample_record,
+    out_sample_dir,
+    out_image_dir,
+    sample_summary_path,
+    planned_draped_zprj_path,
+    material_json_path,
+):
+    if not SKIP_EXISTING:
+        return None
+
+    if not os.path.exists(sample_summary_path):
+        return None
+
+    existing_summary, summary_error = try_read_json(sample_summary_path)
+    if summary_error or not isinstance(existing_summary, dict):
+        return None
+    if existing_summary.get("status") != "success":
+        return None
+
+    obj_bundle = None
+    if EXPORT_OBJ:
+        obj_path = os.path.join(out_sample_dir, OBJ_FILE_NAME)
+        if not os.path.exists(obj_path):
+            return None
+        obj_bundle = collect_obj_bundle(out_sample_dir, obj_path)
+        if not obj_bundle.get("obj_path") or not obj_bundle.get("mtl_path"):
+            return None
+
+    if SAVE_SIM_ZPRJ and not os.path.exists(planned_draped_zprj_path):
+        return None
+
+    rendered_images = []
+    if not SKIP_RENDER:
+        if count_existing_images(out_image_dir) < NUM_VIEWS:
+            return None
+        rendered_images = sorted(
+            glob.glob(os.path.join(out_image_dir, "*.png"))
+            + glob.glob(os.path.join(out_image_dir, "*.jpg"))
+            + glob.glob(os.path.join(out_image_dir, "*.jpeg"))
+        )
+
+    if material_json_path and not os.path.exists(material_json_path):
+        return None
+
+    output_files = dict(existing_summary.get("output_files") or {})
+    output_files.update(
+        {
+            "draped_zprj": planned_draped_zprj_path if SAVE_SIM_ZPRJ else None,
+            "obj_dir": out_sample_dir,
+            "gs_dir": sample_record["output_files"]["gs_dir"],
+            "sample_summary_json": sample_summary_path,
+            "material_json": material_json_path,
+            "images_dir": out_image_dir if rendered_images else output_files.get("images_dir"),
+        }
+    )
+    if obj_bundle:
+        output_files.update(
+            {
+                "obj": obj_bundle.get("obj_path"),
+                "mtl": obj_bundle.get("mtl_path"),
+                "diffuse": obj_bundle.get("diffuse_path"),
+                "normal": obj_bundle.get("normal_path"),
+            }
+        )
+
+    skipped_record = dict(sample_record)
+    skipped_record.update(existing_summary)
+    skipped_record.update(
+        {
+            "sample_index": sample_record["sample_index"],
+            "sample_id": sample_record["sample_id"],
+            "garment_id": sample_record["garment_id"],
+            "body_id": sample_record["body_id"],
+            "fabric_id": sample_record["fabric_id"],
+            "bend_id": sample_record["bend_id"],
+            "garment_zprj": sample_record["garment_zprj"],
+            "source_sample_dir": sample_record["source_sample_dir"],
+            "zfab_path": sample_record["zfab_path"],
+            "output_dir": out_sample_dir,
+            "status": "success",
+            "skipped_existing": True,
+            "output_files": output_files,
+        }
+    )
+    if obj_bundle:
+        skipped_record.update(
+            {
+                "obj_export": obj_bundle,
+                "obj_path": obj_bundle.get("obj_path"),
+                "mtl_path": obj_bundle.get("mtl_path"),
+                "diffuse_path": obj_bundle.get("diffuse_path"),
+                "normal_path": obj_bundle.get("normal_path"),
+            }
+        )
+    if rendered_images:
+        skipped_record["num_rendered_images"] = len(rendered_images)
+        skipped_record["rendered_images"] = rendered_images
+
+    return skipped_record
+
+
 def make_clo_obj_option_compatible(option_kwargs):
     try:
         signature = inspect.signature(make_clo_obj_option)
@@ -1678,6 +1799,7 @@ def main(argv=None):
             "start_index": START_INDEX,
             "skip_render": SKIP_RENDER,
         },
+        "skip_existing": SKIP_EXISTING,
         "obj_export": {
             "enabled": EXPORT_OBJ,
             "file_name": OBJ_FILE_NAME,
@@ -1753,6 +1875,23 @@ def main(argv=None):
             },
             "status": "started"
         }
+
+        skipped_record = existing_draped_sample_record(
+            sample_record,
+            out_sample_dir,
+            out_image_dir,
+            sample_summary_path,
+            planned_draped_zprj_path,
+            fabric_material_path,
+        )
+        if skipped_record:
+            material_key = os.path.normcase(os.path.abspath(fabric_material_path))
+            output_materials_written.add(material_key)
+            dataset_summary["samples"].append(skipped_record)
+            write_json(sample_summary_path, skipped_record)
+            write_json(dataset_summary_path, dataset_summary)
+            print("  [Skip] existing draped sample is complete")
+            continue
 
         try:
             # 1. base A-pose scene reload
