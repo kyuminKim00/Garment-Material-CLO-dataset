@@ -1,185 +1,193 @@
 # Dataset Creation Instruction
 
-## Goal
+## Confirmed Current Pipeline
 
-같은 garment geometry와 같은 원본 fabric을 여러 body variant에 drape해서, body shape 차이에 따른 draped garment geometry와 multi-view render dataset을 만든다.
+현재 스크립트와 `dataset_config.json` 기준 stage는 4개다.
 
-이전 규칙에서는 fabric bending 값을 바꾼 variant를 만든 뒤 각 garment/body에 적용했다. 현재 규칙에서는 fabric bending을 바꾸지 않는다. `input/fabrics/*.zfab`의 원본 fabric을 그대로 각 body variant에 적용한다.
+| Stage | Script | Output |
+| --- | --- | --- |
+| `1` | `scripts/01_clo_make_dataset.py` | `dataset/01_draped_garments/` |
+| `2` | `scripts/02_generate_proxy.py` | `dataset/02_body_proxy_gt/` |
+| `3` | `scripts/03_blender_render.py` | `dataset/03_blender_multiview/` |
+| `4` | `scripts/04_gs_train.py` | `dataset/04_3dgs/` |
 
-## Body Variants
+`scripts/run_stages.py`는 `pipeline.run_stages`에 적힌 stage만 순서대로 실행한다.
+현재 config는 `[3, 4]`로 Blender render와 3DGS training만 실행한다.
 
-현재 body input은 male/female만이 아니라 weight category까지 포함한다.
+## Dataset Target Spec
 
-| ID | Meaning |
-| --- | --- |
-| `f_unw` | female underweight |
-| `f_nrw` | female normal weight |
-| `f_ovw` | female overweight |
-| `m_unw` | male underweight |
-| `m_nrw` | male normal weight |
-| `m_ovw` | male overweight |
+- 옷 카테고리 5개: 반팔 티셔츠, 긴팔 티셔츠, 원피스, 치마, 바지
+- Garment geometry 10개: geometry가 서로 다른 옷
+- Fabric 30개: 물성이 서로 다른 `.zfab` fabric dataset
+- Avatar 8개: normal, over weight, under weight 계열의 female/male body
+  - `f_34`, `f_38`, `f_42`, `f_46`
+  - `m_44`, `m_48`, `m_52`, `m_56`
 
-현재 데이터셋 루트는 `D:/KKM/CLO-dataset`이며, 입력은 다음 구조를 따른다.
+## Confirmed Local Inputs
+
+현재 workspace에서 확인된 입력은 아래와 같다.
 
 ```text
-D:/KKM/CLO-dataset/
-  input/
-    garments/
-      f_nrw.zprj
-      f_ovw.zprj
-      f_unw.zprj
-      m_nrw.zprj
-      m_ovw.zprj
-      m_unw.zprj
-    fabrics/
-      base0.zfab
-      base1.zfab
-      base2.zfab
-      base3.zfab
-      base4.zfab
+dataset/input/
+  garments/
+    f_34.zprj
+    f_38.zprj
+    f_42.zprj
+    f_46.zprj
+    m_44.zprj
+    m_48.zprj
+    m_52.zprj
+    m_56.zprj
+  fabrics/
+    base0.zfab
+    base1.zfab
+    base2.zfab
+    base3.zfab
+    base4.zfab
+    material_json/
+      base0.material.json
+      ...
+      base4.material.json
 ```
+
+확인된 사실: 현재 local fabric은 5개다. 목표 스펙의 30개 fabric은 아직 현재 입력 폴더에는 없다.
+
+확인된 사실: 현재 local garment/avatar `.zprj`는 8개다. 목표 스펙의 옷 카테고리 5개와 garment geometry 10개를 구분하는 별도 metadata는 현재 config에 없다.
 
 ## Core Rules
 
-- Fabric bending은 변경하지 않는다.
-- `scripts/01_clo_fab_sampler.py`는 삭제하지 않지만, 현재 pipeline에서는 실행하지 않는다.
-- 각 sample은 `input/fabrics/<fabric_id>.zfab` 원본 fabric과 `input/garments/<garment_id>.zprj` body/garment project의 조합이다.
-- CLO drape, OBJ export, Blender multi-view rendering 로직은 기존과 동일하게 유지한다.
-- Output relative path는 `{fabric_id}/{garment_id}`이다. 예: `base0/f_nrw`.
+- Fabric bending sampler는 legacy로 보존하지만 기본 pipeline에서는 실행하지 않는다.
+- Stage 1은 `dataset/input/fabrics/*.zfab` 원본 fabric과 `dataset/input/garments/**/*.zprj`를 조합한다.
+- Output relative sample path는 `{fabric_id}/{garment_id}`다.
+- 예: `base0/f_34`
+- Stage 1, 3, 4는 같은 relative sample path를 공유한다.
+- Stage 2 body proxy는 body/avatar ID별로 한 번 생성한다.
 
 ## Output Structure
 
 ```text
-output_dir/
-  dataset_config.json
-  input/
-    garments/
-    fabrics/
+dataset/
   01_draped_garments/
     base0/
-      f_nrw/
+      f_34/
         obj.obj
         obj.mtl
-        <CLO-exported texture files>
         summary.json
-      f_ovw/
-      f_unw/
-      m_nrw/
-      m_ovw/
-      m_unw/
+      ...
     dataset_summary.json
-  02_blender_multiview/
+  02_body_proxy_gt/
+    f_34/
+      avatar.obj
+      avatar_meta.json
+      proxy/
+        body_proxy_gt.json
+        body_proxy_tensor.npy
+        slices_png/
+    ...
+  03_blender_multiview/
     base0/
-      f_nrw/
+      f_34/
         images/
-          0000.png
-          ...
-          0047.png
         camera_parameters.json
         mesh_vertices.csv
-        dataset_summary.json
         sparse/0/
           cameras.txt
           images.txt
           points3D.txt
           points3D.ply
     pipeline_summary.json
-  03_3dgs/
+  04_3dgs/
     base0/
-      f_nrw/
+      f_34/
+        cameras.json
+        point_cloud/
+        point_cloud.ply
+    pipeline_summary.json
 ```
-
-`01_draped_garments`, `02_blender_multiview`, `03_3dgs`는 같은 relative sample path를 공유한다.
 
 ## Config Requirements
 
-`dataset_config.json`의 핵심 값:
+핵심 값:
 
-| Key | Value / Meaning |
+| Key | Current Value / Meaning |
 | --- | --- |
-| `project.output_dir` | `D:/KKM/CLO-dataset` |
+| `project.output_dir` | `dataset` |
 | `inputs.garments_dir` | `input/garments` |
 | `inputs.fabrics_dir` | `input/fabrics` |
 | `naming.draped_dir` | `01_draped_garments` |
-| `naming.render_dir` | `02_blender_multiview` |
-| `naming.gs_dir` | `03_3dgs` |
+| `naming.body_proxy_dir` | `02_body_proxy_gt` |
+| `naming.render_dir` | `03_blender_multiview` |
+| `naming.gs_dir` | `04_3dgs` |
 | `naming.sample_dir_template` | `{fabric_id}/{garment_id}` |
-| `clo_simulation.export_obj` | `true` |
-| `clo_simulation.skip_render` | `true` |
+| `pipeline.run_stages` | 실행할 stage 목록 |
 | `blender_render.num_views` | `48` |
 | `blender_render.resolution` | `512` |
 
-`fabric_sampler` section은 legacy compatibility를 위해 남겨 둔다. 현재 기본 pipeline에서는 사용하지 않는다.
-
 ## Stage Execution
 
-실행할 단계 목록은 `pipeline.run_stages`로 관리한다.
-
-| Value | Stage |
-| --- | --- |
-| `1` | CLO drape + OBJ/MTL/texture export |
-| `2` | Blender multi-view rendering |
-| `3` | 3DGS training |
-
-Examples:
-
-| `pipeline.run_stages` | Meaning |
-| --- | --- |
-| `[1]` | CLO drape만 실행 |
-| `[2]` | Blender render만 실행 |
-| `[2, 3]` | Blender render 후 3DGS 실행 |
-| `[1, 2, 3]` | 전체 pipeline 실행 |
-
-Run:
-
-```powershell
-python C:\Users\CGnA\Desktop\CLO\scripts\run_stages.py --config C:\Users\CGnA\Desktop\CLO\dataset_config.json
+```bash
+python scripts/run_stages.py --config dataset_config.json
 ```
 
-CLO stage는 CLO Python Script Editor 안에서 실행해야 한다.
+`pipeline.run_stages` 예시:
 
-## Stage 1: Draped Garments
+| Value | Meaning |
+| --- | --- |
+| `[1]` | CLO drape + OBJ export |
+| `[2]` | body proxy GT 생성 |
+| `[3]` | Blender multi-view render |
+| `[4]` | 3DGS training |
+| `[3, 4]` | 기존 drape 결과로 render 후 3DGS 실행 |
+| `[1, 2, 3, 4]` | 전체 pipeline 실행 |
 
-Input:
+주의: stage 1과 stage 2는 CLO Python API가 필요하므로 CLO Python 환경에서 실행해야 한다.
 
-- `output_dir/input/garments/**/*.zprj`
-- `output_dir/input/fabrics/*.zfab`
+## Stage Details
 
-Output:
+Stage 1 input:
 
-- `output_dir/01_draped_garments/<fabric_id>/<garment_id>/obj.obj`
-- `output_dir/01_draped_garments/<fabric_id>/<garment_id>/obj.mtl`
-- `output_dir/01_draped_garments/<fabric_id>/<garment_id>/<CLO-exported texture files>`
-- `output_dir/01_draped_garments/<fabric_id>/<garment_id>/summary.json`
-- `output_dir/01_draped_garments/dataset_summary.json`
+- `dataset/input/garments/**/*.zprj`
+- `dataset/input/fabrics/*.zfab`
 
-`clo_simulation.save_sim_zprj = true`이면 `draped_garment.zprj`도 저장한다.
+Stage 1 output:
 
-## Stage 2: Blender Multi-View
+- `dataset/01_draped_garments/<fabric_id>/<garment_id>/obj.obj`
+- `dataset/01_draped_garments/<fabric_id>/<garment_id>/obj.mtl`
+- `dataset/01_draped_garments/<fabric_id>/<garment_id>/summary.json`
+- `dataset/01_draped_garments/dataset_summary.json`
 
-Input:
+Stage 2 output:
 
-- `output_dir/01_draped_garments/**/obj.obj`
-- 같은 sample folder 안의 `obj.mtl`과 CLO-exported texture files
+- `dataset/02_body_proxy_gt/<body_id>/avatar.obj`
+- `dataset/02_body_proxy_gt/<body_id>/avatar_meta.json`
+- `dataset/02_body_proxy_gt/<body_id>/proxy/body_proxy_gt.json`
+- `dataset/02_body_proxy_gt/<body_id>/proxy/body_proxy_tensor.npy`
+- `dataset/02_body_proxy_gt/<body_id>/proxy/slices_png/`
 
-Output:
+Stage 3 output:
 
-- `output_dir/02_blender_multiview/<fabric_id>/<garment_id>/images/*.png`
-- `output_dir/02_blender_multiview/<fabric_id>/<garment_id>/camera_parameters.json`
-- `output_dir/02_blender_multiview/<fabric_id>/<garment_id>/mesh_vertices.csv`
-- `output_dir/02_blender_multiview/<fabric_id>/<garment_id>/sparse/0/cameras.txt`
-- `output_dir/02_blender_multiview/<fabric_id>/<garment_id>/sparse/0/images.txt`
-- `output_dir/02_blender_multiview/<fabric_id>/<garment_id>/sparse/0/points3D.txt`
-- `output_dir/02_blender_multiview/<fabric_id>/<garment_id>/sparse/0/points3D.ply`
+- `dataset/03_blender_multiview/<fabric_id>/<garment_id>/images/*.png`
+- `dataset/03_blender_multiview/<fabric_id>/<garment_id>/camera_parameters.json`
+- `dataset/03_blender_multiview/<fabric_id>/<garment_id>/mesh_vertices.csv`
+- `dataset/03_blender_multiview/<fabric_id>/<garment_id>/sparse/0/cameras.txt`
+- `dataset/03_blender_multiview/<fabric_id>/<garment_id>/sparse/0/images.txt`
+- `dataset/03_blender_multiview/<fabric_id>/<garment_id>/sparse/0/points3D.txt`
+- `dataset/03_blender_multiview/<fabric_id>/<garment_id>/sparse/0/points3D.ply`
+
+Stage 4 output:
+
+- `dataset/04_3dgs/<fabric_id>/<garment_id>/point_cloud/iteration_*/point_cloud.ply`
+- `dataset/04_3dgs/<fabric_id>/<garment_id>/point_cloud.ply`
+- optional render output under `dataset/04_3dgs/<fabric_id>/<garment_id>/train/`
+- `dataset/04_3dgs/pipeline_summary.json`
 
 ## Quality Checks
 
-- 각 fabric/body 조합마다 OBJ, MTL, texture files가 존재해야 한다.
-- 같은 fabric 안에서 body variant별 drape 결과가 같은 relative layout으로 정렬되어야 한다.
-- Fabric texture는 body variant가 달라도 동일해야 한다.
-- Transparent or semi-transparent fabric은 사용하지 않는다.
+- 각 fabric/avatar 조합마다 OBJ, MTL, texture files가 존재해야 한다.
 - Blender render는 sample당 48 views를 생성해야 한다.
+- `sparse/0/cameras.txt`와 `sparse/0/images.txt`가 있어야 3DGS stage 대상이 된다.
 - `dataset_summary.json`과 실제 folder path가 일치해야 한다.
+- 3DGS 실행 환경에는 `diff_gaussian_rasterization`, `simple_knn`, `fused_ssim` CUDA extension이 설치되어 있어야 한다.
 
 ## Deprecated Bending Notes
 
@@ -192,4 +200,4 @@ Output:
 - `naming.fabric_variant_dir_template`
 - `naming.bend_dir_template`
 
-현재 dataset 생성에서는 위 값들이 sample 수나 output path를 결정하지 않는다.
+현재 dataset 생성에서는 위 값들이 기본 sample 수나 output path를 결정하지 않는다.
