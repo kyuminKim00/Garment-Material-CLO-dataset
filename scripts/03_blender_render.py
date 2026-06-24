@@ -10,7 +10,7 @@ from pathlib import Path
 import bpy
 from mathutils import Matrix, Vector
 
-CONFIG_JSON_PATH = Path(r"C:\Users\CGnA\Desktop\CLO\dataset_config.json")
+CONFIG_JSON_PATH = Path(r"/home/cgna/km/Garment-Material-CLO-dataset/dataset_config.json")
 SCRIPT_PATH = Path(globals().get("__file__", CONFIG_JSON_PATH.parent / "scripts" / "03_blender_render.py")).resolve()
 SCRIPT_DIR = SCRIPT_PATH.parent
 

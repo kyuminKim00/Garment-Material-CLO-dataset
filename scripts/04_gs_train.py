@@ -7,7 +7,7 @@ from pathlib import Path
 
 SCRIPT_PATH = Path(__file__).resolve()
 REPO_ROOT = SCRIPT_PATH.parent.parent
-DEFAULT_CONFIG_PATH = Path(r"C:\Users\CGnA\Desktop\CLO\dataset_config.json")
+DEFAULT_CONFIG_PATH = Path(r"/home/cgna/km/Garment-Material-CLO-dataset/dataset_config.json")
 
 
 def load_config(path):

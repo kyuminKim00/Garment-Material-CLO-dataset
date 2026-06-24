@@ -9,7 +9,7 @@ from pathlib import Path
 SCRIPT_PATH = Path(__file__).resolve()
 SCRIPT_DIR = SCRIPT_PATH.parent
 REPO_ROOT = SCRIPT_DIR.parent
-CONFIG_JSON_PATH = r"C:\Users\CGnA\Desktop\CLO\dataset_config.json"
+CONFIG_JSON_PATH = r"/home/cgna/km/Garment-Material-CLO-dataset/dataset_config.json"
 
 
 def script_argv():

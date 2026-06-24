@@ -5,7 +5,7 @@
   },
   "pipeline": {
     "run_stages": [
-      2, 3, 4
+      3, 4
     ],
     "blender_executable": "blender",
     "python_executable": "python"
