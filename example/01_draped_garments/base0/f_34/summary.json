@@ -1,0 +1,205 @@
+{
+  "sample_index": 0,
+  "sample_id": "base0__f_34",
+  "garment_id": "f_34",
+  "body_id": "f_34",
+  "fabric_id": "base0",
+  "bend_id": "original",
+  "garment_zprj": "C:\\Users\\CGnA\\Desktop\\CLO\\dataset\\input\\garments\\f_34.zprj",
+  "source_sample_dir": "C:\\Users\\CGnA\\Desktop\\CLO\\dataset\\input\\fabrics\\base0.zfab",
+  "zfab_path": "C:\\Users\\CGnA\\Desktop\\CLO\\dataset\\input\\fabrics\\base0.zfab",
+  "output_dir": "C:\\Users\\CGnA\\Desktop\\CLO\\dataset\\01_draped_garments\\base0/f_34",
+  "output_files": {
+    "draped_zprj": null,
+    "obj_dir": "C:\\Users\\CGnA\\Desktop\\CLO\\dataset\\01_draped_garments\\base0/f_34",
+    "gs_dir": "C:\\Users\\CGnA\\Desktop\\CLO\\dataset\\04_3dgs\\base0/f_34",
+    "sample_summary_json": "C:\\Users\\CGnA\\Desktop\\CLO\\dataset\\01_draped_garments\\base0/f_34\\summary.json",
+    "material_json": "C:\\Users\\CGnA\\Desktop\\CLO\\dataset\\01_draped_garments\\base0\\material.json",
+    "images_dir": null,
+    "obj": "C:\\Users\\CGnA\\Desktop\\CLO\\dataset\\01_draped_garments\\base0\\f_34\\obj.obj",
+    "mtl": "C:\\Users\\CGnA\\Desktop\\CLO\\dataset\\01_draped_garments\\base0\\f_34\\obj.mtl",
+    "diffuse": null,
+    "normal": null,
+    "body_proxy_json": "C:\\Users\\CGnA\\Desktop\\CLO\\dataset\\02_body_proxy_gt\\f_34\\proxy\\body_proxy_gt.json",
+    "body_proxy_tensor": "C:\\Users\\CGnA\\Desktop\\CLO\\dataset\\02_body_proxy_gt\\f_34\\proxy\\body_proxy_tensor.npy",
+    "body_proxy_dir": "C:\\Users\\CGnA\\Desktop\\CLO\\dataset\\02_body_proxy_gt\\f_34\\proxy",
+    "avatar_obj": "C:\\Users\\CGnA\\Desktop\\CLO\\dataset\\02_body_proxy_gt\\f_34\\avatar.obj",
+    "avatar_meta": "C:\\Users\\CGnA\\Desktop\\CLO\\dataset\\02_body_proxy_gt\\f_34\\avatar_meta.json"
+  },
+  "status": "success",
+  "added_fabric_index": 1,
+  "pattern_count": 5,
+  "obj_export": {
+    "obj_path": "C:\\Users\\CGnA\\Desktop\\CLO\\dataset\\01_draped_garments\\base0\\f_34\\obj.obj",
+    "mtl_path": "C:\\Users\\CGnA\\Desktop\\CLO\\dataset\\01_draped_garments\\base0\\f_34\\obj.mtl",
+    "diffuse_path": null,
+    "normal_path": null,
+    "files": [
+      "C:\\Users\\CGnA\\Desktop\\CLO\\dataset\\01_draped_garments\\base0\\f_34\\obj.obj",
+      "C:\\Users\\CGnA\\Desktop\\CLO\\dataset\\01_draped_garments\\base0\\f_34\\obj.mtl"
+    ],
+    "export_function": "ExportOBJW",
+    "export_signature": "path_import_export_option",
+    "raw_result": "['C:/Users/CGnA/Desktop/CLO/dataset/01_draped_garments/base0/f_34/obj.obj', 'C:/Users/CGnA/Desktop/CLO/dataset/01_draped_garments/base0/f_34/obj.mtl']",
+    "import_export_option": {
+      "set": {
+        "bExportGarment": true,
+        "bExportAvatar": false,
+        "bExportLight": false,
+        "bExportFabric": true,
+        "bSingleObject": true,
+        "bIncludeHiddenObject": false,
+        "scale": 0.01,
+        "bSaveInZip": false
+      },
+      "failed": {},
+      "requested": {
+        "clo_version": "2026.0.312",
+        "function_candidates": [
+          "ExportOBJW"
+        ],
+        "include_garment": true,
+        "include_avatar": false,
+        "scale": 0.01,
+        "export_fabric": true,
+        "show_dialog": false
+      }
+    },
+    "post_processing": "none"
+  },
+  "obj_path": "C:\\Users\\CGnA\\Desktop\\CLO\\dataset\\01_draped_garments\\base0\\f_34\\obj.obj",
+  "mtl_path": "C:\\Users\\CGnA\\Desktop\\CLO\\dataset\\01_draped_garments\\base0\\f_34\\obj.mtl",
+  "diffuse_path": null,
+  "normal_path": null,
+  "num_rendered_images": 0,
+  "rendered_images": [],
+  "sim_zprj_path": null,
+  "material_json": "C:\\Users\\CGnA\\Desktop\\CLO\\dataset\\01_draped_garments\\base0\\material.json",
+  "material_json_error": null,
+  "label_4d": null,
+  "body_proxy_gt": {
+    "enabled": true,
+    "status": "success",
+    "body_id": "f_34",
+    "garment_id": "f_34",
+    "garment_zprj": "C:\\Users\\CGnA\\Desktop\\CLO\\dataset\\input\\garments\\f_34.zprj",
+    "body_dir": "C:\\Users\\CGnA\\Desktop\\CLO\\dataset\\02_body_proxy_gt\\f_34",
+    "avatar_obj": "C:\\Users\\CGnA\\Desktop\\CLO\\dataset\\02_body_proxy_gt\\f_34\\avatar.obj",
+    "avatar_meta": "C:\\Users\\CGnA\\Desktop\\CLO\\dataset\\02_body_proxy_gt\\f_34\\avatar_meta.json",
+    "proxy_dir": "C:\\Users\\CGnA\\Desktop\\CLO\\dataset\\02_body_proxy_gt\\f_34\\proxy",
+    "proxy_json": "C:\\Users\\CGnA\\Desktop\\CLO\\dataset\\02_body_proxy_gt\\f_34\\proxy\\body_proxy_gt.json",
+    "proxy_tensor": "C:\\Users\\CGnA\\Desktop\\CLO\\dataset\\02_body_proxy_gt\\f_34\\proxy\\body_proxy_tensor.npy",
+    "proxy_png_dir": "C:\\Users\\CGnA\\Desktop\\CLO\\dataset\\02_body_proxy_gt\\f_34\\proxy\\slices_png",
+    "avatar_reused": false,
+    "proxy_reused": false,
+    "export_info": {
+      "ok": true,
+      "obj_path": "C:\\Users\\CGnA\\Desktop\\CLO\\dataset\\02_body_proxy_gt\\f_34\\avatar.obj",
+      "function": "utils.clo_export_obj.ExportOBJW",
+      "result": "\"['C:/Users/CGnA/Desktop/CLO/dataset/02_body_proxy_gt/f_34/avatar.obj', 'C:/Users/CGnA/Desktop/CLO/dataset/02_body_proxy_gt/f_34/avatar.mtl']\"",
+      "option_log": {
+        "set": {
+          "bExportGarment": false,
+          "bExportAvatar": true,
+          "bExportLight": false,
+          "bExportFabric": false,
+          "bSingleObject": true,
+          "bIncludeHiddenObject": false,
+          "scale": 1.0,
+          "bSaveInZip": false
+        },
+        "failed": {}
+      },
+      "export_attempts": [
+        {
+          "function": "ExportOBJW",
+          "signature": "path_import_export_option",
+          "status": "called",
+          "result": "['C:/Users/CGnA/Desktop/CLO/dataset/02_body_proxy_gt/f_34/avatar.obj', 'C:/Users/CGnA/Desktop/CLO/dataset/02_body_proxy_gt/f_34/avatar.mtl']",
+          "obj_exists": true
+        }
+      ],
+      "bundle": {
+        "obj_path": "C:\\Users\\CGnA\\Desktop\\CLO\\dataset\\02_body_proxy_gt\\f_34\\avatar.obj",
+        "mtl_path": "C:\\Users\\CGnA\\Desktop\\CLO\\dataset\\02_body_proxy_gt\\f_34\\avatar.mtl",
+        "files": [
+          "C:\\Users\\CGnA\\Desktop\\CLO\\dataset\\02_body_proxy_gt\\f_34\\avatar.obj",
+          "C:\\Users\\CGnA\\Desktop\\CLO\\dataset\\02_body_proxy_gt\\f_34\\avatar.mtl"
+        ]
+      }
+    },
+    "post_process": {
+      "geometry_only": true,
+      "manual_scale": 0.01,
+      "num_vertices_written": 97998,
+      "num_faces_written": 159095,
+      "num_lines_skipped": 202152,
+      "removed_sidecar_files": [
+        "C:\\Users\\CGnA\\Desktop\\CLO\\dataset\\02_body_proxy_gt\\f_34\\arm_normal.jpg",
+        "C:\\Users\\CGnA\\Desktop\\CLO\\dataset\\02_body_proxy_gt\\f_34\\avatar.mtl",
+        "C:\\Users\\CGnA\\Desktop\\CLO\\dataset\\02_body_proxy_gt\\f_34\\body_normal.jpg",
+        "C:\\Users\\CGnA\\Desktop\\CLO\\dataset\\02_body_proxy_gt\\f_34\\eye_normal.jpg",
+        "C:\\Users\\CGnA\\Desktop\\CLO\\dataset\\02_body_proxy_gt\\f_34\\face_normal.jpg",
+        "C:\\Users\\CGnA\\Desktop\\CLO\\dataset\\02_body_proxy_gt\\f_34\\hair_diffuse_grey_2K.jpg",
+        "C:\\Users\\CGnA\\Desktop\\CLO\\dataset\\02_body_proxy_gt\\f_34\\hair_normal_2K.jpg",
+        "C:\\Users\\CGnA\\Desktop\\CLO\\dataset\\02_body_proxy_gt\\f_34\\leg_normal.jpg",
+        "C:\\Users\\CGnA\\Desktop\\CLO\\dataset\\02_body_proxy_gt\\f_34\\Suede_Normal.jpg",
+        "C:\\Users\\CGnA\\Desktop\\CLO\\dataset\\02_body_proxy_gt\\f_34\\tooth_normal.jpg"
+      ]
+    },
+    "avatar_geometry": {
+      "num_vertices": 97998,
+      "num_faces": 159095,
+      "bbox_min": [
+        -5.99278198,
+        3.132e-05,
+        -1.63324097
+      ],
+      "bbox_max": [
+        5.99276917,
+        17.68848511,
+        1.6838533
+      ],
+      "bbox_size": [
+        11.98555115,
+        17.688453789999997,
+        3.31709427
+      ],
+      "height_y": 17.688453789999997,
+      "center": [
+        -6.405000000153649e-06,
+        8.844258215,
+        0.025306165000000047
+      ]
+    },
+    "proxy_result": {
+      "command": [
+        "python",
+        "C:\\Users\\CGnA\\Desktop\\CLO\\utils\\generate_avatar_proxy_gt.py",
+        "--obj",
+        "C:\\Users\\CGnA\\Desktop\\CLO\\dataset\\02_body_proxy_gt\\f_34\\avatar.obj",
+        "--out_dir",
+        "C:\\Users\\CGnA\\Desktop\\CLO\\dataset\\02_body_proxy_gt\\f_34\\proxy",
+        "--num_slices",
+        "10",
+        "--top_k",
+        "4",
+        "--slice_min",
+        "0.08",
+        "--slice_max",
+        "0.88",
+        "--png_size",
+        "768",
+        "--json_name",
+        "body_proxy_gt.json",
+        "--tensor_name",
+        "body_proxy_tensor.npy",
+        "--png_dir_name",
+        "slices_png"
+      ],
+      "returncode": 0,
+      "stdout": "[OK] wrote C:\\Users\\CGnA\\Desktop\\CLO\\dataset\\02_body_proxy_gt\\f_34\\proxy\\body_proxy_gt.json\n[OK] wrote C:\\Users\\CGnA\\Desktop\\CLO\\dataset\\02_body_proxy_gt\\f_34\\proxy\\body_proxy_tensor.npy\n[OK] wrote 10 slice PNGs to C:\\Users\\CGnA\\Desktop\\CLO\\dataset\\02_body_proxy_gt\\f_34\\proxy\\slices_png\n",
+      "stderr": ""
+    }
+  }
+}

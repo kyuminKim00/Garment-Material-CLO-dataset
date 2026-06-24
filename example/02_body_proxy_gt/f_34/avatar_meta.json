@@ -1,0 +1,93 @@
+{
+  "created_at": "2026-06-23 17:47:02",
+  "base_zprj": "C:\\Users\\CGnA\\Desktop\\CLO\\dataset\\input\\garments\\f_34.zprj",
+  "import_result": "True",
+  "obj_path": "C:\\Users\\CGnA\\Desktop\\CLO\\dataset\\02_body_proxy_gt\\f_34\\avatar.obj",
+  "export_scale_requested": 0.01,
+  "clo_option_scale": 1.0,
+  "manual_vertex_scale_applied": 0.01,
+  "coordinate_convention": {
+    "height_axis": "y",
+    "scale_note": "Values are measured from the final OBJ after manually scaling vertex coordinates."
+  },
+  "avatar_geometry": {
+    "num_vertices": 97998,
+    "num_faces": 159095,
+    "bbox_min": [
+      -5.99278198,
+      3.132e-05,
+      -1.63324097
+    ],
+    "bbox_max": [
+      5.99276917,
+      17.68848511,
+      1.6838533
+    ],
+    "bbox_size": [
+      11.98555115,
+      17.688453789999997,
+      3.31709427
+    ],
+    "height_y": 17.688453789999997,
+    "center": [
+      -6.405000000153649e-06,
+      8.844258215,
+      0.025306165000000047
+    ]
+  },
+  "export_info": {
+    "ok": true,
+    "obj_path": "C:\\Users\\CGnA\\Desktop\\CLO\\dataset\\02_body_proxy_gt\\f_34\\avatar.obj",
+    "function": "utils.clo_export_obj.ExportOBJW",
+    "result": "\"['C:/Users/CGnA/Desktop/CLO/dataset/02_body_proxy_gt/f_34/avatar.obj', 'C:/Users/CGnA/Desktop/CLO/dataset/02_body_proxy_gt/f_34/avatar.mtl']\"",
+    "option_log": {
+      "set": {
+        "bExportGarment": false,
+        "bExportAvatar": true,
+        "bExportLight": false,
+        "bExportFabric": false,
+        "bSingleObject": true,
+        "bIncludeHiddenObject": false,
+        "scale": 1.0,
+        "bSaveInZip": false
+      },
+      "failed": {}
+    },
+    "export_attempts": [
+      {
+        "function": "ExportOBJW",
+        "signature": "path_import_export_option",
+        "status": "called",
+        "result": "['C:/Users/CGnA/Desktop/CLO/dataset/02_body_proxy_gt/f_34/avatar.obj', 'C:/Users/CGnA/Desktop/CLO/dataset/02_body_proxy_gt/f_34/avatar.mtl']",
+        "obj_exists": true
+      }
+    ],
+    "bundle": {
+      "obj_path": "C:\\Users\\CGnA\\Desktop\\CLO\\dataset\\02_body_proxy_gt\\f_34\\avatar.obj",
+      "mtl_path": "C:\\Users\\CGnA\\Desktop\\CLO\\dataset\\02_body_proxy_gt\\f_34\\avatar.mtl",
+      "files": [
+        "C:\\Users\\CGnA\\Desktop\\CLO\\dataset\\02_body_proxy_gt\\f_34\\avatar.obj",
+        "C:\\Users\\CGnA\\Desktop\\CLO\\dataset\\02_body_proxy_gt\\f_34\\avatar.mtl"
+      ]
+    }
+  },
+  "post_process": {
+    "geometry_only": true,
+    "manual_scale": 0.01,
+    "num_vertices_written": 97998,
+    "num_faces_written": 159095,
+    "num_lines_skipped": 202152,
+    "removed_sidecar_files": [
+      "C:\\Users\\CGnA\\Desktop\\CLO\\dataset\\02_body_proxy_gt\\f_34\\arm_normal.jpg",
+      "C:\\Users\\CGnA\\Desktop\\CLO\\dataset\\02_body_proxy_gt\\f_34\\avatar.mtl",
+      "C:\\Users\\CGnA\\Desktop\\CLO\\dataset\\02_body_proxy_gt\\f_34\\body_normal.jpg",
+      "C:\\Users\\CGnA\\Desktop\\CLO\\dataset\\02_body_proxy_gt\\f_34\\eye_normal.jpg",
+      "C:\\Users\\CGnA\\Desktop\\CLO\\dataset\\02_body_proxy_gt\\f_34\\face_normal.jpg",
+      "C:\\Users\\CGnA\\Desktop\\CLO\\dataset\\02_body_proxy_gt\\f_34\\hair_diffuse_grey_2K.jpg",
+      "C:\\Users\\CGnA\\Desktop\\CLO\\dataset\\02_body_proxy_gt\\f_34\\hair_normal_2K.jpg",
+      "C:\\Users\\CGnA\\Desktop\\CLO\\dataset\\02_body_proxy_gt\\f_34\\leg_normal.jpg",
+      "C:\\Users\\CGnA\\Desktop\\CLO\\dataset\\02_body_proxy_gt\\f_34\\Suede_Normal.jpg",
+      "C:\\Users\\CGnA\\Desktop\\CLO\\dataset\\02_body_proxy_gt\\f_34\\tooth_normal.jpg"
+    ]
+  }
+}

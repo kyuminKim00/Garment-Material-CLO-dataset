@@ -1,0 +1,134 @@
+{
+  "sample_id": "base0__original",
+  "fabric_id": "base0",
+  "bend_id": "original",
+  "source_sample_dir": "C:\\Users\\CGnA\\Desktop\\CLO\\example\\input\\fabrics\\base0.zfab",
+  "source_zfab": "C:\\Users\\CGnA\\Desktop\\CLO\\example\\input\\fabrics\\base0.zfab",
+  "zfab_sha256": "33995657b97951e911cec6c48bfa84cdcf2e092f27c70dd9d4887bb375a0ef42",
+  "created_at": "2026-06-23 13:31:47",
+  "generated_by": "scripts/01_clo_make_dataset.py",
+  "gt_source": "scanned_from_zfab_fab_fields",
+  "actual": {
+    "stretch": {
+      "warp": 100000.0,
+      "weft": 40000.0
+    },
+    "shear": 44412.0,
+    "bending": {
+      "warp": 5070.94482421875,
+      "weft": 5000.0,
+      "bias": 5000.0
+    },
+    "buckling": {
+      "warp": 0.0,
+      "weft": 0.0,
+      "bias": 0.0
+    },
+    "thickness": 0.5,
+    "friction": 0.029999999329447746
+  },
+  "measured": {
+    "stretch": {
+      "fSuK": 100000.0,
+      "fSvK": 40000.0,
+      "fLeftShearK": 22206.0,
+      "fLeftShearK_v2": 44412.0,
+      "fRightShearK_v2": 44412.0,
+      "fHK": 22206.0
+    },
+    "bending": {
+      "fBuK": 100.0,
+      "fBuK_v2": 5070.94482421875,
+      "fBvK": 1591.5494384765625,
+      "fBvK_v2": 5000.0,
+      "fBhK": 1591.5494384765625
+    },
+    "bending_shear": {
+      "fBLeftShearK": 1591.5494384765625,
+      "fBLeftShearK_v2": 5000.0,
+      "fBRightShearK_v2": 5000.0
+    },
+    "buckling": {
+      "fBucklingStiffnessU": 0.0,
+      "fBucklingStiffnessV": 0.0,
+      "fBucklingStiffnessH": 0.0,
+      "fBucklingStiffnessLeftShear": 0.0
+    },
+    "physical": {
+      "fThickness": 0.5,
+      "fFriction": 0.029999999329447746
+    }
+  },
+  "internal_fields": {
+    "field_groups": {
+      "stretch": [
+        "fSuK",
+        "fSvK",
+        "fLeftShearK",
+        "fLeftShearK_v2",
+        "fRightShearK_v2",
+        "fHK"
+      ],
+      "bending": [
+        "fBuK",
+        "fBuK_v2",
+        "fBvK",
+        "fBvK_v2",
+        "fBhK",
+        "fBhK_v2"
+      ],
+      "bending_shear": [
+        "fBLeftShearK",
+        "fBLeftShearK_v2",
+        "fBRightShearK",
+        "fBRightShearK_v2"
+      ],
+      "buckling": [
+        "fBucklingStiffnessU",
+        "fBucklingStiffnessV",
+        "fBucklingStiffnessH",
+        "fBucklingStiffnessLeftShear"
+      ],
+      "physical": [
+        "fDensity",
+        "fThickness",
+        "fFriction"
+      ]
+    },
+    "selected_values": {
+      "stretch": {
+        "fSuK": 100000.0,
+        "fSvK": 40000.0,
+        "fLeftShearK": 22206.0,
+        "fLeftShearK_v2": 44412.0,
+        "fRightShearK_v2": 44412.0,
+        "fHK": 22206.0
+      },
+      "bending": {
+        "fBuK": 100.0,
+        "fBuK_v2": 5070.94482421875,
+        "fBvK": 1591.5494384765625,
+        "fBvK_v2": 5000.0,
+        "fBhK": 1591.5494384765625
+      },
+      "bending_shear": {
+        "fBLeftShearK": 1591.5494384765625,
+        "fBLeftShearK_v2": 5000.0,
+        "fBRightShearK_v2": 5000.0
+      },
+      "buckling": {
+        "fBucklingStiffnessU": 0.0,
+        "fBucklingStiffnessV": 0.0,
+        "fBucklingStiffnessH": 0.0,
+        "fBucklingStiffnessLeftShear": 0.0
+      },
+      "physical": {
+        "fThickness": 0.5,
+        "fFriction": 0.029999999329447746
+      }
+    },
+    "fab_files": [
+      "5_w943wvo23q9843jxsmkl_.fab"
+    ]
+  }
+}

@@ -1,0 +1,85 @@
+{
+  "sample_id": "base0__original",
+  "fabric_id": "base0",
+  "bend_id": "original",
+  "source_sample_dir": "C:\\Users\\CGnA\\Desktop\\CLO\\dataset\\input\\fabrics\\base0.zfab",
+  "source_zfab": "C:\\Users\\CGnA\\Desktop\\CLO\\dataset\\input\\fabrics\\base0.zfab",
+  "zfab_sha256": "33995657b97951e911cec6c48bfa84cdcf2e092f27c70dd9d4887bb375a0ef42",
+  "created_at": "2026-06-23 17:32:37",
+  "generated_by": "scripts/01_clo_make_dataset.py",
+  "gt_source": "scanned_from_zfab_fab_fields",
+  "actual": {
+    "stretch": {
+      "warp": 38202.9453125,
+      "weft": 40000.0
+    },
+    "shear": 44412.0,
+    "bending": {
+      "warp": 5070.94482421875,
+      "weft": 5000.0,
+      "bias": 5000.0
+    },
+    "buckling": {
+      "warp": 0.3237873315811157,
+      "weft": 0.32524266839027405,
+      "bias": 0.32304975390434265
+    },
+    "density": 0.0003480000013951212,
+    "weight": 348.000001,
+    "thickness": 0.5,
+    "friction": 0.029999999329447746
+  },
+  "internal_fields": {
+    "field_map": {
+      "stretch.warp": [
+        "fSuK"
+      ],
+      "stretch.weft": [
+        "fSvK"
+      ],
+      "shear": [
+        "fRightShearK_v2",
+        "fLeftShearK_v2",
+        "fHK"
+      ],
+      "bending.warp": [
+        "fBuK_v2",
+        "fBuK"
+      ],
+      "bending.weft": [
+        "fBvK_v2",
+        "fBvK"
+      ],
+      "bending.bias": [
+        "fBRightShearK_v2",
+        "fBLeftShearK_v2",
+        "fBhK_v2",
+        "fBhK"
+      ],
+      "buckling.warp": [
+        "fBucklingStiffnessU"
+      ],
+      "buckling.weft": [
+        "fBucklingStiffnessV"
+      ],
+      "buckling.bias": [
+        "fBucklingStiffnessH"
+      ],
+      "density": [
+        "fDensity"
+      ],
+      "weight": [
+        "fDensity"
+      ],
+      "thickness": [
+        "fThickness"
+      ],
+      "friction": [
+        "fFriction"
+      ]
+    },
+    "fab_files": [
+      "5_w943wvo23q9843jxsmkl_.fab"
+    ]
+  }
+}
