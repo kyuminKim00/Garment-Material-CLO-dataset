@@ -1,6 +1,6 @@
 # CLO Dataset Pipeline
 
-이 README는 코드 실행 방법과 stage별 입출력 구조만 설명한다. 데이터셋 목표 스펙은 `instruction.md`를 본다.
+이 README는 코드 실행 방법과 stage별 입출력 구조를 설명한다. 데이터셋 목표 스펙은 `instruction.md`를 본다.
 
 ## Run
 
@@ -40,7 +40,7 @@ python scripts/run_stages.py --config dataset_config.json --blender /path/to/ble
 
 ## Input Structure
 
-`project.output_dir`가 dataset root다. `inputs.garments_dir`, `inputs.fabrics_dir`가 상대 경로이면 `project.output_dir` 기준으로 해석된다.
+`project.output_dir`가 dataset root다.
 
 ```text
 <project.output_dir>/
