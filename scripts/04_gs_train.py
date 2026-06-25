@@ -8,7 +8,7 @@ from pathlib import Path
 
 SCRIPT_PATH = Path(__file__).resolve()
 REPO_ROOT = SCRIPT_PATH.parent.parent
-DEFAULT_CONFIG_PATH = Path(r"/home/work/kkm/Garment-Material-CLO-dataset/dataset_config.json")
+DEFAULT_CONFIG_PATH = Path(r"/home/work/metownsplat-data/kkm/Garment-Material-CLO-dataset/dataset_config.json")
 
 
 def load_config(path):

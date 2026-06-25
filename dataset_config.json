@@ -1,10 +1,10 @@
 {
   "project": {
     "name": "CLO garment dataset",
-    "output_dir": "/home/work/kkm/Garment-Material-CLO-dataset/dataset"
+    "output_dir": "/home/work/metownsplat-data/kkm/Garment-Material-CLO-dataset/dataset"
   },
   "paths": {
-    "scripts_dir": "/home/work/kkm/Garment-Material-CLO-dataset/scripts"
+    "scripts_dir": "/home/work/metownsplat-data/kkm/Garment-Material-CLO-dataset/scripts"
   },
   "pipeline": {
     "run_stages": [
@@ -131,7 +131,7 @@
   },
   "3dgs_training": {
     "enabled": true,
-    "gaussian_splatting_dir": "/home/work/kkm/gaussian-splatting",
+    "gaussian_splatting_dir": "/home/work/metownsplat-data/kkm/gaussian-splatting",
     "python_executable": "python",
     "extra_args": [
       "--white_background",
