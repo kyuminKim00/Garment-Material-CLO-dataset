@@ -1,10 +1,10 @@
 {
   "project": {
     "name": "CLO garment dataset",
-    "output_dir": "D:/KKM/CLO-dataset"
+    "output_dir": "/home/cgna/km/Garment-Material-CLO-dataset/dataset"
   },
   "paths": {
-    "scripts_dir": "C:/Users/CGnA/Desktop/CLO/scripts"
+    "scripts_dir": "/home/cgna/km/Garment-Material-CLO-dataset/scripts"
   },
   "pipeline": {
     "run_stages": [
@@ -134,9 +134,13 @@
     "gaussian_splatting_dir": "/home/cgna/km/gaussian-splatting",
     "python_executable": "python",
     "extra_args": [
+      "--white_background",
       "--save_iterations",
-      "30000"
+      "30000",
+      "--disable_viewer"
     ],
+    "parallel_jobs": 6,
+    "port_start": 6009,
     "skip_existing": true,
     "render_after_train": true,
     "render_extra_args": []

@@ -1,4 +1,5 @@
 import argparse
+import concurrent.futures
 import json
 import shutil
 import subprocess
@@ -66,6 +67,12 @@ def parse_args():
         "--skip_existing",
         default=None,
         help="true skips samples that already have a point_cloud.ply; false retrains them.",
+    )
+    parser.add_argument(
+        "--parallel_jobs",
+        type=int,
+        default=None,
+        help="Override 3dgs_training.parallel_jobs.",
     )
     parser.add_argument("--dry_run", action="store_true", help="Print commands without running train.py.")
     return parser.parse_args()
@@ -139,6 +146,58 @@ def write_summary(path, summary):
         json.dump(summary, handle, indent=2)
 
 
+def clamp_parallel_jobs(value):
+    try:
+        jobs = int(value)
+    except (TypeError, ValueError) as exc:
+        raise ValueError("3dgs_training.parallel_jobs must be an integer >= 1") from exc
+    if jobs < 1:
+        raise ValueError("3dgs_training.parallel_jobs must be >= 1")
+    return jobs
+
+
+def has_arg(args, option):
+    return option in args or any(arg.startswith(f"{option}=") for arg in args)
+
+
+def train_args_for_target(train_extra_args, target_offset, port_start):
+    args = list(train_extra_args)
+    if port_start and not has_arg(args, "--port"):
+        args.extend(["--port", str(int(port_start) + int(target_offset))])
+    return args
+
+
+def tail_text(path, max_lines=40):
+    if not path.exists():
+        return ""
+    with open(path, "r", encoding="utf-8", errors="replace") as handle:
+        lines = handle.readlines()
+    return "".join(lines[-max_lines:]).strip()
+
+
+def run_logged_command(command, cwd, log_path):
+    log_path.parent.mkdir(parents=True, exist_ok=True)
+    with open(log_path, "w", encoding="utf-8", errors="replace") as log_file:
+        log_file.write("$ " + " ".join(command) + "\n\n")
+        log_file.flush()
+        completed = subprocess.run(
+            command,
+            cwd=str(cwd),
+            stdout=log_file,
+            stderr=subprocess.STDOUT,
+        )
+
+    if completed.returncode != 0:
+        recent_log = tail_text(log_path)
+        message = (
+            f"Command failed with exit code {completed.returncode}: {' '.join(command)}\n"
+            f"Log: {log_path}"
+        )
+        if recent_log:
+            message += f"\n\nLast log lines:\n{recent_log}"
+        raise RuntimeError(message)
+
+
 def existing_training_result(target):
     output_dir = target["output_dir"].resolve()
     point_cloud = find_latest_point_cloud(output_dir)
@@ -165,6 +224,7 @@ def render_preview(target, gs_repo, python_executable, render_extra_args, dry_ru
         raise FileNotFoundError(f"Gaussian Splatting render.py not found: {render_py}")
 
     output_dir = target["output_dir"].resolve()
+    log_path = output_dir / "render.log"
     command = [
         python_executable,
         "render.py",
@@ -180,9 +240,10 @@ def render_preview(target, gs_repo, python_executable, render_extra_args, dry_ru
         return {
             "render_status": "dry_run",
             "render_command": command,
+            "render_log": str(log_path),
         }
 
-    subprocess.run(command, cwd=str(gs_repo), check=True)
+    run_logged_command(command, gs_repo, log_path)
 
     render_dir = find_latest_render_dir(output_dir)
     if not render_dir:
@@ -191,6 +252,7 @@ def render_preview(target, gs_repo, python_executable, render_extra_args, dry_ru
     return {
         "render_status": "success",
         "render_command": command,
+        "render_log": str(log_path),
         "render_dir": str(render_dir),
     }
 
@@ -211,6 +273,7 @@ def train_one(
     source_dir = target["source_dir"].resolve()
     output_dir = target["output_dir"].resolve()
     output_dir.mkdir(parents=True, exist_ok=True)
+    log_path = output_dir / "train.log"
 
     command = [
         python_executable,
@@ -234,6 +297,7 @@ def train_one(
             "command": command,
             "source_dir": str(source_dir),
             "output_dir": str(output_dir),
+            "train_log": str(log_path),
             "point_cloud_ply": "",
         }
         if render_after_train:
@@ -248,7 +312,7 @@ def train_one(
             )
         return result
 
-    subprocess.run(command, cwd=str(gs_repo), check=True)
+    run_logged_command(command, gs_repo, log_path)
 
     point_cloud = find_latest_point_cloud(output_dir)
     if not point_cloud:
@@ -264,6 +328,7 @@ def train_one(
         "command": command,
         "source_dir": str(source_dir),
         "output_dir": str(output_dir),
+        "train_log": str(log_path),
         "point_cloud_ply": str(point_cloud),
     }
     if render_after_train:
@@ -277,6 +342,38 @@ def train_one(
             )
         )
     return result
+
+
+def run_target(
+    target,
+    target_offset,
+    skip_existing,
+    gs_repo,
+    python_executable,
+    train_extra_args,
+    port_start,
+    render_after_train,
+    render_extra_args,
+    dry_run,
+):
+    result = existing_training_result(target) if skip_existing else None
+    if result:
+        print("=" * 80)
+        print(f"[Skip] {target['sample_name']}")
+        print(f"  output : {result['output_dir']}")
+        print(f"  point  : {result['point_cloud_ply']}")
+        return result
+
+    target_train_args = train_args_for_target(train_extra_args, target_offset, port_start)
+    return train_one(
+        target,
+        gs_repo,
+        python_executable,
+        target_train_args,
+        render_after_train,
+        render_extra_args,
+        dry_run,
+    )
 
 
 def main():
@@ -317,6 +414,12 @@ def main():
         args.skip_existing,
         parse_bool(deep_get(config, ["3dgs_training", "skip_existing"], True), True),
     )
+    parallel_jobs = clamp_parallel_jobs(
+        args.parallel_jobs
+        if args.parallel_jobs is not None
+        else deep_get(config, ["3dgs_training", "parallel_jobs"], 1)
+    )
+    port_start = int(deep_get(config, ["3dgs_training", "port_start"], 6009))
 
     render_all_samples = parse_bool(
         args.render_all_samples,
@@ -345,45 +448,61 @@ def main():
         "dry_run": args.dry_run,
         "skip_existing": skip_existing,
         "render_after_train": render_after_train,
+        "parallel_jobs": parallel_jobs,
+        "port_start": port_start,
         "samples": [],
     }
     write_summary(pipeline_summary_path, pipeline_summary)
 
+    records_by_target = {}
     for target in targets:
         record = {
             "sample_index": target["sample_index"],
             "sample_name": target["sample_name"],
             "source_dir": str(target["source_dir"]),
             "output_dir": str(target["output_dir"]),
-            "status": "started",
+            "status": "queued",
         }
         pipeline_summary["samples"].append(record)
-        write_summary(pipeline_summary_path, pipeline_summary)
+        records_by_target[id(target)] = record
+    write_summary(pipeline_summary_path, pipeline_summary)
 
-        try:
-            result = existing_training_result(target) if skip_existing else None
-            if result:
-                print("=" * 80)
-                print(f"[Skip] {target['sample_name']}")
-                print(f"  output : {result['output_dir']}")
-                print(f"  point  : {result['point_cloud_ply']}")
-            else:
-                result = train_one(
-                    target,
-                    gs_repo,
+    print(f"[3DGS] targets: {len(targets)}")
+    print(f"[3DGS] parallel_jobs: {parallel_jobs}")
+
+    with concurrent.futures.ThreadPoolExecutor(max_workers=parallel_jobs) as executor:
+        future_to_target = {}
+        for target_offset, target in enumerate(targets):
+            record = records_by_target[id(target)]
+            record["status"] = "started"
+            write_summary(pipeline_summary_path, pipeline_summary)
+            future = executor.submit(
+                run_target,
+                target,
+                target_offset,
+                skip_existing,
+                gs_repo,
                 python_executable,
                 train_extra_args,
+                port_start,
                 render_after_train,
                 render_extra_args,
                 args.dry_run,
             )
-            record.update(result)
-        except Exception as exc:
-            record.update({"status": "failed", "error": str(exc)})
-            write_summary(pipeline_summary_path, pipeline_summary)
-            raise
+            future_to_target[future] = target
 
-        write_summary(pipeline_summary_path, pipeline_summary)
+        for future in concurrent.futures.as_completed(future_to_target):
+            target = future_to_target[future]
+            record = records_by_target[id(target)]
+            try:
+                record.update(future.result())
+            except Exception as exc:
+                record.update({"status": "failed", "error": str(exc)})
+                write_summary(pipeline_summary_path, pipeline_summary)
+                for pending in future_to_target:
+                    pending.cancel()
+                raise
+            write_summary(pipeline_summary_path, pipeline_summary)
 
     print("[Done] 3DGS targets:", len(targets))
     print("[Done] Pipeline summary:", pipeline_summary_path)

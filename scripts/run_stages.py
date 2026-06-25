@@ -17,7 +17,7 @@ def current_script_path():
 
 
 SCRIPT_PATH = current_script_path()
-CONFIG_JSON_PATH = r"C:\Users\CGnA\Desktop\CLO\dataset_config.json"
+CONFIG_JSON_PATH = r"/home/cgna/km/Garment-Material-CLO-dataset/dataset_config.json"
 
 
 def script_argv():

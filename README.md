@@ -51,8 +51,6 @@ python scripts/run_stages.py --config dataset_config.json --blender /path/to/ble
     fabrics/
       <fabric_id>.zfab
       ...
-      material_json/
-        <fabric_id>.material.json
 ```
 
 관련 config:
