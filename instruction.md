@@ -36,7 +36,8 @@ Fabric, avatar size, pose는 sampling 규칙에 따라 배정한다.
 | Selected fabric | 30 | sample from 50 | 물성 분포가 균일하도록 선택 |
 | Avatar base | 2 | fixed | `FV2.1_Luna_Teenager`, `MV2.1_Jinho` |
 | Avatar body variant | 8 | `2 avatar bases x 4 size levels` | female/male 각각 4단계 size |
-| Body proxy GT | 8 | `8 body variants` | body variant별 `body_proxy_gt.json`, `body_proxy_tensor.npy` 1개 |
+| Body proxy GT | 8 * (pose variants) | `8 body variants * pose variants` | body variant별 `body_proxy_gt.json`, `body_proxy_tensor.npy` 1개 |
+| Body Obj | 8 * (pose variants) | `8 body variants * pose variants` | body 별 `avatar.obj`, `avatar.json` 1개 |
 | Draped garment sample | 12,000 | `5 x 10 x 30 x 8` | sampled garment/fabric/body/pose 조합 |
 | Draped OBJ, texture file | 12,000 | `5 x 10 x 30 x 8` | `01_draped_garments/**/obj.obj, .png` |
 | Multi-view image | 576,000 | `12,000 x 48 views` | `03_blender_multiview/**/images/*.png` |
