@@ -32,8 +32,8 @@ Fabric, avatar size, pose는 sampling 규칙에 따라 배정한다.
 | --- | ---: | --- | --- |
 | 옷 카테고리 | 5 | fixed | 반팔 티셔츠, 긴팔 티셔츠, 원피스, 치마, 바지 |
 | Garment geometry | 50 | `5 categories x 10 geometries` | 카테고리별 10개씩, 서로 다른 의류 geometry |
-| Fabric pool | 50 | fixed | 후보 `.zfab` pool |
-| Selected fabric | 30 | sample from 50 | 물성 분포가 균일하도록 선택 |
+| Fabric pool | 300~ | fixed | 후보 `.zfab` pool |
+| Selected fabric | 30 | sample from 300 | 물성 분포가 균일하도록 선택 |
 | Avatar base | 2 | fixed | `FV2.1_Luna_Teenager`, `MV2.1_Jinho` |
 | Avatar body variant | 8 | `2 avatar bases x 4 size levels` | female/male 각각 4단계 size |
 | Body proxy GT | 8 * (pose variants) | `8 body variants * pose variants` | body variant별 `body_proxy_gt.json`, `body_proxy_tensor.npy` 1개 |
